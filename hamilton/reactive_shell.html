@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reactive shell — energy-driven Hamiltonian walker</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface-2: #f1efe8;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(120, 117, 110, 0.18);
+    --border-strong: rgba(120, 117, 110, 0.4);
+    --purple: #534ab7;
+    --coral: #993c1d;
+    --amber: #ba7517;
+    --gray: #888780;
+    --blue: #185fa5;
+    --teal: #0f6e56;
+    --pink: #993556;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #232321;
+      --surface-2: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --border: rgba(241, 239, 232, 0.12);
+      --border-strong: rgba(241, 239, 232, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 4px; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 20px; }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  canvas {
+    width: 100%; height: auto;
+    display: block;
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .panel-label {
+    font-size: 11px; color: var(--text-secondary);
+    margin: 0 0 4px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .panel-value {
+    font-size: 20px; font-weight: 500; margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  button {
+    padding: 8px 16px; font-size: 13px;
+    font-family: inherit;
+    background: transparent; color: var(--text);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px; cursor: pointer;
+    transition: background 0.12s;
+  }
+  button:hover { background: var(--surface-2); }
+  button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .controls {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    justify-content: center; margin-top: 12px;
+  }
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+  .slider-row label {
+    font-size: 13px; color: var(--text-secondary);
+    min-width: 90px;
+  }
+  input[type="range"] { flex: 1; accent-color: var(--purple); }
+  .slider-row .val {
+    font-size: 13px; font-weight: 500;
+    min-width: 56px; text-align: right;
+    font-family: ui-monospace, monospace;
+  }
+  .meter {
+    height: 8px; border-radius: 4px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #185fa5, #534ab7, #993556);
+    transition: width 0.1s;
+  }
+  details {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+  }
+  summary {
+    cursor: pointer; font-weight: 500; font-size: 14px;
+    list-style: none;
+  }
+  summary::before { content: "▸ "; color: var(--text-secondary); }
+  details[open] summary::before { content: "▾ "; }
+  .details-body {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .phase-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: ui-monospace, monospace;
+  }
+  .phase-protect { background: rgba(83, 74, 183, 0.15); color: var(--purple); }
+  .phase-burrow { background: rgba(186, 117, 23, 0.15); color: var(--amber); }
+  .phase-gather { background: rgba(15, 110, 86, 0.15); color: var(--teal); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Reactive shell</h1>
+  <p class="subtitle">Seed-driven energy decays through the cycle. Bridges respond to energy level. Protect / burrow / gather emerge from the energy dynamics, not mode switching.</p>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <canvas id="cv" width="680" height="480"></canvas>
+        <div class="controls">
+          <button id="btnSeed">Seed shell</button>
+          <button id="btnPlay">Pause</button>
+          <button id="btnReset">Reset</button>
+        </div>
+        <div class="slider-row">
+          <label>Seed strength</label>
+          <input type="range" id="seedStrength" min="20" max="100" value="80" step="5">
+          <span class="val" id="seedVal">80%</span>
+        </div>
+        <div class="slider-row">
+          <label>Decay rate</label>
+          <input type="range" id="decayRate" min="1" max="20" value="6" step="1">
+          <span class="val" id="decayVal">6</span>
+        </div>
+        <div class="slider-row">
+          <label>Speed</label>
+          <input type="range" id="speed" min="100" max="1500" value="450" step="50">
+          <span class="val" id="speedVal">450ms</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <p class="panel-label">Shell energy</p>
+        <p class="panel-value" id="energyVal" style="color: var(--blue);">0%</p>
+        <div class="meter"><div class="meter-fill" id="energyMeter" style="width: 0%;"></div></div>
+      </div>
+
+      <div class="card">
+        <p class="panel-label">Current phase</p>
+        <p style="margin: 4px 0 8px;"><span class="phase-pill phase-protect" id="phasePill">protect</span></p>
+        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;" id="phaseExplain">No energy. Electron held at seed node. Press "Seed shell" to inject energy.</p>
+      </div>
+
+      <div class="card">
+        <p class="panel-label">Bridge state</p>
+        <p style="font-size: 13px; margin: 4px 0;">
+          Bridge 1: <span id="b1State" style="font-family: monospace; color: var(--gray);">grounded</span>
+        </p>
+        <p style="font-size: 13px; margin: 4px 0;">
+          Bridge 2: <span id="b2State" style="font-family: monospace; color: var(--gray);">grounded</span>
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="panel-label">Accumulator</p>
+        <p class="panel-value" id="accumVal" style="font-size: 18px;">0.000</p>
+        <p style="font-size: 12px; color: var(--text-secondary); margin: 4px 0 0;">walker's running phase</p>
+      </div>
+
+      <div class="card">
+        <p class="panel-label">Gathered output</p>
+        <div id="gatherBin" style="display: flex; gap: 4px; flex-wrap: wrap; min-height: 24px; align-items: center;">
+          <span style="font-size: 12px; color: var(--text-tertiary);">empty</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details open>
+    <summary>How the reactivity works</summary>
+    <div class="details-body">
+      <p>Energy enters the shell when you seed it. Energy decays over each cycle by the decay rate. The bridges respond to current energy level:</p>
+      <p><strong>High energy</strong> (above 60%): bridges fully ground. The accumulator zeros at each bridge crossing. Walker burrows the cycle with reset between halves. This is <span class="phase-pill phase-burrow">burrow</span> behavior.</p>
+      <p><strong>Medium energy</strong> (20–60%): bridges partially ground. Some accumulator phase carries through. The shell starts collecting at hemisphere nodes. This is <span class="phase-pill phase-gather">gather</span> behavior emerging.</p>
+      <p><strong>Low energy</strong> (below 20%): bridges no longer ground. Accumulator phase persists. Walker drops the cycle and rests at the seed. This is <span class="phase-pill phase-protect">protect</span> behavior — the seed is preserved against further activity.</p>
+      <p>The three phases aren't modes you switch between. They emerge from energy level. Seed high → burrow. Seed mid → gather. Seed depleted → protect. Re-seed restarts the cycle.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The four hemisphere operations on the accumulator</summary>
+    <div class="details-body">
+      <p>The walker carries an accumulator (a phase value in [-1, +1]). Each hemisphere node transforms it:</p>
+      <p><code>−1</code> at the seed: <strong>negate</strong>. <code>accum = −accum</code>. Inversion.</p>
+      <p><code>−i</code>: <strong>rotate −90°</strong>. <code>accum = −1 − accum</code> (or rotation in 2D phase space). Pulls toward the negative.</p>
+      <p><code>+1</code>: <strong>identity</strong>. <code>accum = accum</code>. Pass-through.</p>
+      <p><code>+i</code>: <strong>rotate +90°</strong>. <code>accum = +1 − accum</code>. Pulls toward the positive.</p>
+      <p>Bridge nodes (the zeros) react: <code>accum = accum × bridgeGrounding</code> where bridgeGrounding ranges from 1 (full ground) at high energy to 0 (no ground) at low energy. This is the reactive piece — bridges aren't always zero, they're zero when there's enough energy to ground them.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What this shell does as a unit</summary>
+    <div class="details-body">
+      <p>Seed in → walker runs → bridges respond to remaining energy → output gathered at hemisphere nodes when energy drops into gather range → final state preserved at seed when energy depletes.</p>
+      <p>Each cycle (8 steps) is one pass. Many cycles per seed. Each cycle costs energy at the rate set by the decay slider. When seeded with strength 80% and decay 6, you typically get 2–3 burrow cycles, 3–4 gather cycles, then settling.</p>
+      <p>The gathered output (the bottom card) is the shell's product. In a scaled system, this becomes the seed for a higher-level shell. Base-8 scaling: 8 shells produce 8 gathered values, those 8 values seed one next-level shell.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Keyboard shortcuts</summary>
+    <div class="details-body">
+      <p><code>Space</code> play/pause · <code>S</code> seed shell · <code>R</code> reset · <code>↑</code>/<code>↓</code> adjust speed</p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function() {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  const nodes = [
+    { label: '−1', op: 'negate',         color: '#993c1d', kind: 'hemi', x: 130, y: 150 },
+    { label: '−i', op: 'rotate −90°',    color: '#ba7517', kind: 'hemi', x: 130, y: 320 },
+    { label: '0',  op: 'bridge 1a',      color: '#888780', kind: 'bridge', bridge: 1, x: 290, y: 235 },
+    { label: '0',  op: 'bridge 1b',      color: '#888780', kind: 'bridge', bridge: 1, x: 350, y: 235 },
+    { label: '+1', op: 'identity',       color: '#185fa5', kind: 'hemi', x: 510, y: 150 },
+    { label: '+i', op: 'rotate +90°',    color: '#0f6e56', kind: 'hemi', x: 510, y: 320 },
+    { label: '0',  op: 'bridge 2a',      color: '#888780', kind: 'bridge', bridge: 2, x: 410, y: 420 },
+    { label: '0',  op: 'bridge 2b',      color: '#888780', kind: 'bridge', bridge: 2, x: 230, y: 420 },
+  ];
+
+  let currentNode = 0;
+  let stepCount = 0;
+  let phase = 0;
+  let playing = true;
+  let stepDuration = 450;
+  let energy = 0;
+  let accumulator = 0;
+  let gatheredItems = [];
+  let lastStepTime = performance.now();
+  let bridge1Grounding = 1;
+  let bridge2Grounding = 1;
+
+  function getPhase() {
+    if (energy < 20) return 'protect';
+    if (energy < 60) return 'gather';
+    return 'burrow';
+  }
+
+  function seedShell() {
+    const strength = +document.getElementById('seedStrength').value;
+    energy = strength;
+    accumulator = 0;
+    currentNode = 0;
+    stepCount = 0;
+    phase = 0;
+    lastStepTime = performance.now();
+  }
+
+  function applyNode(n) {
+    if (n.kind === 'hemi') {
+      switch (n.label) {
+        case '−1': accumulator = -accumulator; break;
+        case '−i': accumulator = (accumulator - 1) / 2; break;
+        case '+1': /* identity */ break;
+        case '+i': accumulator = (accumulator + 1) / 2; break;
+      }
+      // In gather phase, hemisphere nodes contribute to output
+      if (getPhase() === 'gather' && stepCount > 0) {
+        gatheredItems.push({
+          value: accumulator.toFixed(2),
+          color: n.color,
+          time: performance.now(),
+        });
+        if (gatheredItems.length > 16) gatheredItems.shift();
+      }
+    } else if (n.kind === 'bridge') {
+      // Reactive: bridge grounds proportional to energy
+      // High energy: full ground (accum × 0). Low energy: no ground (accum × 1).
+      const grounding = Math.max(0, Math.min(1, (energy - 20) / 60));
+      if (n.bridge === 1) bridge1Grounding = grounding;
+      else bridge2Grounding = grounding;
+      accumulator = accumulator * (1 - grounding);
+    }
+    // Clamp accumulator
+    accumulator = Math.max(-1, Math.min(1, accumulator));
+  }
+
+  function step() {
+    if (energy < 1) {
+      // Settle at seed node
+      currentNode = 0;
+      return;
+    }
+    currentNode = (currentNode + 1) % nodes.length;
+    stepCount++;
+    applyNode(nodes[currentNode]);
+    // Decay energy
+    const decayRate = +document.getElementById('decayRate').value;
+    energy = Math.max(0, energy - decayRate * 0.5);
+  }
+
+  function drawHemispheres() {
+    ctx.strokeStyle = 'rgba(83, 74, 183, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.ellipse(130, 235, 85, 145, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(510, 235, 85, 145, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.7)';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('left hemisphere', 130, 70);
+    ctx.fillText('right hemisphere', 510, 70);
+
+    // Bridge labels with grounding indicator
+    const b1Color = bridge1Grounding > 0.8 ? '#888780' : bridge1Grounding > 0.3 ? '#ba7517' : '#993c1d';
+    const b2Color = bridge2Grounding > 0.8 ? '#888780' : bridge2Grounding > 0.3 ? '#ba7517' : '#993c1d';
+    ctx.fillStyle = b1Color;
+    ctx.fillText(`bridge 1: ${(bridge1Grounding * 100).toFixed(0)}% ground`, 320, 220);
+    ctx.fillStyle = b2Color;
+    ctx.fillText(`bridge 2: ${(bridge2Grounding * 100).toFixed(0)}% ground`, 320, 445);
+  }
+
+  function drawEdges() {
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      const b = nodes[(i + 1) % nodes.length];
+      const isCurrent = (i === currentNode) && playing && energy >= 1;
+
+      let alpha = isCurrent ? 0.85 : 0.25;
+      ctx.strokeStyle = `rgba(83, 74, 183, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawNodes() {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const isCurrent = i === currentNode;
+      const r = isCurrent ? 26 : 20;
+
+      // Bridge nodes pulse with their grounding state
+      if (n.kind === 'bridge') {
+        const g = n.bridge === 1 ? bridge1Grounding : bridge2Grounding;
+        const fadeColor = `rgba(136, 135, 128, ${0.4 + (1 - g) * 0.5})`;
+        ctx.fillStyle = (1 - g) > 0.2 ? fadeColor : 'rgba(241, 239, 232, 0.95)';
+      } else {
+        ctx.fillStyle = isCurrent ? n.color : 'rgba(241, 239, 232, 0.95)';
+      }
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.strokeStyle = n.color;
+      ctx.lineWidth = isCurrent ? 3 : 1.5;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = isCurrent && n.kind !== 'bridge' ? '#ffffff' : n.color;
+      ctx.font = `${isCurrent ? '500 16px' : '14px'} system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.label, n.x, n.y);
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+
+  function drawElectron() {
+    const a = nodes[currentNode];
+    const b = nodes[(currentNode + 1) % nodes.length];
+    let ex, ey;
+    if (playing && energy >= 1) {
+      ex = a.x + (b.x - a.x) * phase;
+      ey = a.y + (b.y - a.y) * phase;
+    } else {
+      ex = a.x;
+      ey = a.y;
+    }
+
+    // Glow scales with energy
+    const glowScale = 0.3 + (energy / 100) * 1.5;
+    const pulse = 1 + 0.15 * Math.sin(performance.now() * 0.005);
+    ctx.fillStyle = `rgba(212, 83, 126, ${0.15 + energy / 400})`;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 14 * glowScale * pulse, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#993556';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 6, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '500 9px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('e−', ex, ey);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawAccumulatorBar() {
+    // Visual bar showing accumulator value at the bottom of the canvas
+    const barY = H - 18;
+    const barW = 200;
+    const barX = W / 2 - barW / 2;
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.15)';
+    ctx.fillRect(barX, barY, barW, 6);
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.4)';
+    ctx.fillRect(barX + barW / 2 - 1, barY - 2, 2, 10);
+    const accX = barX + barW / 2 + (accumulator * barW / 2);
+    ctx.fillStyle = '#993556';
+    ctx.beginPath();
+    ctx.arc(accX, barY + 3, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.7)';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`accumulator: ${accumulator.toFixed(3)}`, W / 2, barY - 6);
+  }
+
+  function drawHeader() {
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.85)';
+    ctx.font = '500 13px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`phase: ${getPhase()}`, 16, 26);
+    ctx.textAlign = 'right';
+    ctx.fillText(`step ${stepCount}`, W - 16, 26);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawHemispheres();
+    drawEdges();
+    drawNodes();
+    drawElectron();
+    drawAccumulatorBar();
+    drawHeader();
+  }
+
+  function updatePanels() {
+    document.getElementById('energyVal').textContent = energy.toFixed(1) + '%';
+    document.getElementById('energyMeter').style.width = energy + '%';
+
+    const ph = getPhase();
+    const pill = document.getElementById('phasePill');
+    pill.textContent = ph;
+    pill.className = 'phase-pill phase-' + ph;
+
+    const explanations = {
+      protect: 'Energy depleted. Walker rests at seed. Re-seed to restart cycle.',
+      burrow: 'High energy. Bridges fully ground. Walker burrows the cycle, accumulator zeros at each bridge.',
+      gather: 'Medium energy. Bridges partially ground. Hemisphere nodes now collect output as accumulator phase carries through.',
+    };
+    document.getElementById('phaseExplain').textContent = explanations[ph];
+
+    document.getElementById('accumVal').textContent = accumulator.toFixed(3);
+
+    document.getElementById('b1State').textContent = (bridge1Grounding * 100).toFixed(0) + '% ground';
+    document.getElementById('b1State').style.color = bridge1Grounding > 0.5 ? 'var(--gray)' : 'var(--coral)';
+    document.getElementById('b2State').textContent = (bridge2Grounding * 100).toFixed(0) + '% ground';
+    document.getElementById('b2State').style.color = bridge2Grounding > 0.5 ? 'var(--gray)' : 'var(--coral)';
+
+    const bin = document.getElementById('gatherBin');
+    if (gatheredItems.length === 0) {
+      bin.innerHTML = '<span style="font-size: 12px; color: var(--text-tertiary);">empty</span>';
+    } else {
+      bin.innerHTML = gatheredItems.map(g =>
+        `<span style="font-family: monospace; font-size: 11px; background: ${g.color}22; color: ${g.color}; padding: 2px 6px; border-radius: 4px;">${g.value}</span>`
+      ).join('');
+    }
+  }
+
+  function loop(now) {
+    if (playing) {
+      const elapsed = now - lastStepTime;
+      phase = Math.min(1, elapsed / stepDuration);
+      if (phase >= 1) {
+        step();
+        phase = 0;
+        lastStepTime = now;
+      }
+    }
+    draw();
+    updatePanels();
+    requestAnimationFrame(loop);
+  }
+
+  document.getElementById('btnSeed').onclick = seedShell;
+  document.getElementById('btnPlay').onclick = () => {
+    playing = !playing;
+    document.getElementById('btnPlay').textContent = playing ? 'Pause' : 'Play';
+  };
+  document.getElementById('btnReset').onclick = () => {
+    energy = 0;
+    accumulator = 0;
+    currentNode = 0;
+    stepCount = 0;
+    phase = 0;
+    bridge1Grounding = 1;
+    bridge2Grounding = 1;
+    gatheredItems = [];
+  };
+  document.getElementById('seedStrength').addEventListener('input', e => {
+    document.getElementById('seedVal').textContent = e.target.value + '%';
+  });
+  document.getElementById('decayRate').addEventListener('input', e => {
+    document.getElementById('decayVal').textContent = e.target.value;
+  });
+  document.getElementById('speed').addEventListener('input', e => {
+    stepDuration = +e.target.value;
+    document.getElementById('speedVal').textContent = stepDuration + 'ms';
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); document.getElementById('btnPlay').click(); }
+    else if (e.key === 's' || e.key === 'S') seedShell();
+    else if (e.key === 'r' || e.key === 'R') document.getElementById('btnReset').click();
+    else if (e.key === 'ArrowUp') {
+      const s = document.getElementById('speed');
+      s.value = Math.max(100, +s.value - 50);
+      s.dispatchEvent(new Event('input'));
+    }
+    else if (e.key === 'ArrowDown') {
+      const s = document.getElementById('speed');
+      s.value = Math.min(1500, +s.value + 50);
+      s.dispatchEvent(new Event('input'));
+    }
+  });
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

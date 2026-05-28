@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fortress & Moat — Proof of Work</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto; background: #020617; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .panel { background: linear-gradient(180deg, rgba(15,23,42,.85), rgba(2,6,23,.75)); border: 1px solid rgba(8,145,178,.18); backdrop-filter: blur(12px); }
+  .ring-rot { transition: transform 700ms cubic-bezier(.22,1,.36,1); }
+  .quad { transition: stroke 400ms, stroke-width 400ms, filter 400ms, opacity 400ms; }
+  .glow-cyan { filter: drop-shadow(0 0 14px rgba(34,211,238,.55)); }
+  .glow-gold { filter: drop-shadow(0 0 18px rgba(250,204,21,.65)); }
+  .pulse-27 { animation: pulse27 1.2s ease-in-out infinite; }
+  @keyframes pulse27 {
+    0%,100% { filter: drop-shadow(0 0 8px rgba(250,204,21,.4)); }
+    50% { filter: drop-shadow(0 0 28px rgba(250,204,21,.9)); }
+  }
+  .grid-bg {
+    background-image: radial-gradient(circle at 1px 1px, rgba(148,163,184,.08) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+</style>
+</head>
+<body class="text-slate-200 min-h-screen">
+<div class="fixed inset-0 -z-10">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(6,182,212,0.15),transparent_60%),radial-gradient(ellipse_at_bottom,_rgba(234,179,8,0.12),transparent_60%)]"></div>
+  <div class="absolute inset-0 grid-bg opacity-40"></div>
+</div>
+
+<div class="max-w-[1400px] mx-auto p-4 lg:p-8">
+  <header class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 grid place-items-center glow-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 4v5c0 5-3.5 9-7 9s-7-4-7-9V7l7-4z" stroke="#22d3ee" stroke-width="1.5"/></svg>
+      </div>
+      <div>
+        <h1 class="text-xl lg:text-2xl font-extrabold tracking-tight">FORTRESS & MOAT</h1>
+        <p class="text-xs text-slate-400 -mt-1">Proof-of-Work Visualization • conceptual mapping tool</p>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-2 text-[11px] mono">
+      <span class="px-2 py-1 rounded bg-slate-800/70 border border-slate-700">4-BIT</span>
+      <span class="px-2 py-1 rounded bg-slate-800/70 border border-slate-700">SHADOW INVERSE</span>
+      <span class="px-2 py-1 rounded bg-slate-800/70 border border-slate-700">HAMILTON 28</span>
+    </div>
+  </header>
+
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+    <!-- VISUALIZATION -->
+    <div class="xl:col-span-3 panel rounded-[28px] p-4 lg:p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold tracking-wider text-cyan-300/90">CONCENTRIC FENCES</div>
+        <div class="text-[11px] mono text-slate-400">0 • 1 • 2 • 4 • 8 moats — 4 quads each</div>
+      </div>
+
+      <div class="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#040b14] border border-slate-800">
+        <svg id="viz" viewBox="0 0 500 500" class="w-full h-full">
+          <defs>
+            <radialGradient id="coreGlow" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="rgba(34,211,238,0.35)"/>
+              <stop offset="60%" stop-color="rgba(34,211,238,0.08)"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </radialGradient>
+          </defs>
+          <circle cx="250" cy="250" r="240" fill="url(#coreGlow)" opacity=".5"/>
+          <g id="shadow-layer"></g>
+          <g id="real-layer"></g>
+          <g id="core" transform="translate(250 250)">
+            <circle r="26" fill="#031825" stroke="#0ea5b7" stroke-opacity=".6"/>
+            <text x="0" y="4" text-anchor="middle" class="mono" font-size="11" fill="#67e8f9">0</text>
+          </g>
+          <g id="pulse-ring" transform="translate(250 250)" opacity="0">
+            <circle r="218" fill="none" stroke="#facc15" stroke-width="2" stroke-dasharray="4 8" class="pulse-27"/>
+          </g>
+        </svg>
+
+        <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+          <div class="flex gap-2">
+            <button id="btnAscend" class="px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700 hover:border-cyan-400/50 text-sm mono transition">↑ ASCEND</button>
+            <button id="btnDescend" class="px-3 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/40 hover:bg-cyan-500/25 text-sm mono transition">↓ DESCEND</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnAuto" class="px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700 hover:border-amber-400/50 text-xs mono">AUTO PULSE</button>
+            <span class="text-[10px] mono text-slate-500 hidden sm:block">SPACE / ↑↓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-[12px] leading-relaxed text-slate-400">
+        Personal mapping model. Each ring = fence. 4 quads = 4-bit in/out. Rotation = phase. Shadow = bitwise inverse.
+        <span class="text-slate-300">Step 27 = first bit 1 past fence, Step 28 = base 00 reset — full proof of work cycle.</span>
+      </div>
+    </div>
+
+    <!-- RIGHT PANELS -->
+    <div class="xl:col-span-2 space-y-4">
+      <!-- Hamilton -->
+      <div class="panel rounded-[24px] p-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[11px] tracking-widest text-slate-400">HAMILTON STEP COUNTER</div>
+            <div class="mt-1 flex items-baseline gap-3">
+              <div class="text-5xl mono font-semibold"><span id="hStep" class="text-white">1</span><span class="text-slate-600">/28</span></div>
+              <div id="hBadge" class="px-2 py-1 rounded-lg text-[11px] mono border border-slate-700 bg-slate-800/60">IN PROGRESS</div>
+            </div>
+            <div id="hLabel" class="mt-2 text-sm text-slate-300">Initializing lattice…</div>
+          </div>
+          <div class="w-14 h-14 rounded-2xl border border-cyan-900/40 bg-cyan-500/10 grid place-items-center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1016 0 8 8 0 00-16 0z" stroke="#22d3ee" opacity=".3"/><path id="hArc" d="M12 4a8 8 0 011.5 15.9" stroke="#22d3ee" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+        <div class="mt-4 h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div id="hProgress" class="h-full w-[3.5%] bg-gradient-to-r from-cyan-400 to-teal-300 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <!-- Shadow Register -->
+      <div class="panel rounded-[24px] p-5">
+        <div class="flex items-center justify-between">
+          <div class="text-[11px] tracking-widest text-amber-300/90">SHADOW REGISTER (mine)</div>
+          <div class="text-[10px] mono text-slate-500">4-bit inverse per ring</div>
+        </div>
+        <div id="shadowRegister" class="mt-3 space-y-2"></div>
+      </div>
+
+      <!-- Phase Register -->
+      <div class="panel rounded-[24px] p-5">
+        <div class="flex items-center justify-between">
+          <div class="text-[11px] tracking-widest text-slate-400">PHASE REGISTER</div>
+          <div class="text-[10px] mono text-slate-500">updates each fence crossing</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <div class="rounded-xl bg-slate-950/60 border border-slate-800 p-3">
+            <div class="text-[10px] text-slate-500 mono">REAL PHASE</div>
+            <div id="phaseReal" class="mt-1 text-2xl mono text-cyan-300">0°</div>
+            <div class="mt-2 flex gap-1">
+              <div class="phase-dot w-6 h-6 rounded grid place-items-center border border-slate-700 text-[10px] mono">0</div>
+              <div class="phase-dot w-6 h-6 rounded grid place-items-center border border-slate-700 text-[10px] mono">90</div>
+              <div class="phase-dot w-6 h-6 rounded grid place-items-center border border-slate-700 text-[10px] mono">180</div>
+              <div class="phase-dot w-6 h-6 rounded grid place-items-center border border-slate-700 text-[10px] mono">270</div>
+            </div>
+          </div>
+          <div class="rounded-xl bg-slate-950/60 border border-amber-900/30 p-3">
+            <div class="text-[10px] text-amber-400/80 mono">INVERSE (shadowed)</div>
+            <div id="phaseInv" class="mt-1 text-2xl mono text-amber-300">0°</div>
+            <div class="mt-2 flex gap-1">
+              <div class="phase-dot-inv w-6 h-6 rounded grid place-items-center border border-amber-900/40 text-[10px] mono">0</div>
+              <div class="phase-dot-inv w-6 h-6 rounded grid place-items-center border border-amber-900/40 text-[10px] mono">90</div>
+              <div class="phase-dot-inv w-6 h-6 rounded grid place-items-center border border-amber-900/40 text-[10px] mono">180</div>
+              <div class="phase-dot-inv w-6 h-6 rounded grid place-items-center border border-amber-900/40 text-[10px] mono">270</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1-Register + PoW -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="panel rounded-[24px] p-5">
+          <div class="text-[11px] tracking-widest text-slate-400">1-REGISTER</div>
+          <div class="mt-2 flex items-center gap-3">
+            <div id="oneRegLight" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 grid place-items-center transition">
+              <div class="w-3 h-3 rounded-full bg-slate-600"></div>
+            </div>
+            <div>
+              <div id="oneRegState" class="mono text-xl">0</div>
+              <div class="text-[11px] text-slate-500">set at Step 27</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel rounded-[24px] p-5">
+          <div class="text-[11px] tracking-widest text-slate-400">PROOF OF WORK</div>
+          <div class="mt-2">
+            <div id="powStatus" class="mono text-xl text-slate-300">IN PROGRESS</div>
+            <div class="text-[11px] text-slate-500">resets at BASE 00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-8 text-center text-[11px] text-slate-600">
+    Conceptual only — not related to any real Microsoft system. Built as a personal mapping tool.
+  </footer>
+</div>
+
+<script>
+const SVG_NS = "http://www.w3.org/2000/svg";
+const fences = [8,4,2,1];
+const radii = {8:210,4:160,2:110,1:65};
+const state = {
+  h: 1,
+  one: 0,
+  pow: 'IN PROGRESS',
+  rings: {}
+};
+
+const shadowLayer = document.getElementById('shadow-layer');
+const realLayer = document.getElementById('real-layer');
+const pulseRing = document.getElementById('pulse-ring');
+
+function makeRing(f, isShadow=false){
+  const r = radii[f];
+  const g = document.createElementNS(SVG_NS,'g');
+  g.id = `${isShadow?'shadow':'real'}-${f}`;
+  g.setAttribute('transform','translate(250 250)');
+  g.classList.add('ring-rot');
+  
+  const track = document.createElementNS(SVG_NS,'circle');
+  track.setAttribute('r', r);
+  track.setAttribute('fill','none');
+  track.setAttribute('stroke', isShadow ? '#3f2206' : '#082838');
+  track.setAttribute('stroke-width', isShadow ? '26' : '28');
+  track.setAttribute('opacity', isShadow ? '0.35' : '0.9');
+  g.appendChild(track);
+
+  const circ = 2*Math.PI*r;
+  const seg = circ/4 * 0.76;
+  const gap = circ - seg;
+
+  for(let i=0;i<4;i++){
+    const c = document.createElementNS(SVG_NS,'circle');
+    c.setAttribute('r', r);
+    c.setAttribute('fill','none');
+    c.setAttribute('stroke-linecap','round');
+    c.setAttribute('stroke-dasharray', `${seg} ${gap}`);
+    c.setAttribute('stroke-dashoffset', -i*(circ/4));
+    c.setAttribute('stroke-width', isShadow ? '7' : '10');
+    c.setAttribute('stroke', isShadow ? '#facc15' : '#22d3ee');
+    c.classList.add('quad', `q${i}`);
+    c.style.opacity = isShadow ? '0.55' : '1';
+    g.appendChild(c);
+  }
+
+  if(!isShadow){
+    const label = document.createElementNS(SVG_NS,'text');
+    label.setAttribute('x', r+10);
+    label.setAttribute('y', 4);
+    label.setAttribute('fill', '#67e8f9');
+    label.setAttribute('font-size','11');
+    label.setAttribute('font-family','JetBrains Mono');
+    label.setAttribute('opacity','0.8');
+    label.textContent = `F${f}`;
+    g.appendChild(label);
+  }
+  return g;
+}
+
+fences.forEach(f=>{
+  shadowLayer.appendChild(makeRing(f,true));
+  realLayer.appendChild(makeRing(f,false));
+  state.rings[f] = { bits:[0,0,0,0], shadow:[1,1,1,1], phase:0, phaseInv:0 };
+});
+
+function bitsFrom(n){
+  return [(n>>3)&1, (n>>2)&1, (n>>1)&1, n&1];
+}
+
+function updateAll(){
+  const h = state.h;
+  const phaseReal = ((h-1)%4)*90;
+  const phaseInv = (360 - phaseReal) % 360;
+
+  // update rings
+  fences.forEach(f=>{
+    const val = (h * (f===8?3:f===4?5:f===2?7:11)) % 16;
+    const b = bitsFrom(val);
+    const s = b.map(x=>x^1);
+    state.rings[f].bits = b;
+    state.rings[f].shadow = s;
+    state.rings[f].phase = phaseReal;
+    state.rings[f].phaseInv = phaseInv;
+
+    const rg = document.getElementById(`real-${f}`);
+    const sg = document.getElementById(`shadow-${f}`);
+    rg.style.transform = `translate(250px,250px) rotate(${phaseReal}deg)`;
+    sg.style.transform = `translate(250px,250px) rotate(${phaseInv}deg)`;
+
+    b.forEach((bit,i)=>{
+      const q = rg.querySelector(`.q${i}`);
+      q.setAttribute('stroke', bit ? '#22d3ee' : '#0b2530');
+      q.setAttribute('stroke-width', (f===8 && h===27 && bit) ? '16' : (bit ? '12' : '8'));
+      q.style.filter = bit ? 'drop-shadow(0 0 6px rgba(34,211,238,.7))' : 'none';
+      q.style.opacity = bit ? '1' : '0.35';
+    });
+    s.forEach((bit,i)=>{
+      const q = sg.querySelector(`.q${i}`);
+      q.setAttribute('stroke', bit ? '#facc15' : '#422006');
+      q.style.opacity = bit ? '0.9' : '0.25';
+    });
+  });
+
+  // Hamilton UI
+  document.getElementById('hStep').textContent = h;
+  document.getElementById('hProgress').style.width = `${(h/28*100).toFixed(1)}%`;
+  const arc = document.getElementById('hArc');
+  const pct = h/28;
+  const ang = pct * 360;
+  const rad = 8;
+  const x = 12 + rad * Math.sin(ang*Math.PI/180);
+  const y = 12 - rad * Math.cos(ang*Math.PI/180);
+  const large = ang>180?1:0;
+  arc.setAttribute('d', `M12 4 A8 8 0 ${large} 1 ${x.toFixed(2)} ${y.toFixed(2)}`);
+
+  const hLabel = document.getElementById('hLabel');
+  const hBadge = document.getElementById('hBadge');
+  const pulse = document.getElementById('pulse-ring');
+
+  if(h===27){
+    state.one = 1;
+    state.pow = 'IN PROGRESS';
+    hLabel.innerHTML = `<span class="text-amber-300 font-semibold">HAMMY BIT 1</span> — first bit 1 past 8-moat fence`;
+    hBadge.textContent = 'STEP 27';
+    hBadge.className = 'px-2 py-1 rounded-lg text-[11px] mono border border-amber-400/40 bg-amber-500/15 text-amber-200';
+    pulse.setAttribute('opacity','1');
+    document.getElementById('real-8').classList.add('glow-gold');
+  } else if(h===28){
+    state.one = 0;
+    state.pow = 'COMPLETE';
+    hLabel.innerHTML = `<span class="text-cyan-300 font-semibold">BASE 00</span> — reset to base state, proof complete`;
+    hBadge.textContent = 'STEP 28';
+    hBadge.className = 'px-2 py-1 rounded-lg text-[11px] mono border border-cyan-400/40 bg-cyan-500/15 text-cyan-200';
+    pulse.setAttribute('opacity','0');
+    document.getElementById('real-8').classList.remove('glow-gold');
+    document.getElementById('real-8').classList.add('glow-cyan');
+    setTimeout(()=>document.getElementById('real-8').classList.remove('glow-cyan'), 600);
+  } else {
+    hLabel.textContent = 'Traversing quad lattice — rotating through fences';
+    hBadge.textContent = 'IN PROGRESS';
+    hBadge.className = 'px-2 py-1 rounded-lg text-[11px] mono border border-slate-700 bg-slate-800/60';
+    pulse.setAttribute('opacity','0');
+    document.getElementById('real-8').classList.remove('glow-gold');
+  }
+
+  // Shadow Register panel
+  const sr = document.getElementById('shadowRegister');
+  sr.innerHTML = fences.map(f=>{
+    const s = state.rings[f].shadow;
+    return `<div class="flex items-center justify-between">
+      <div class="flex items-center gap-2"><span class="w-8 text-[11px] mono text-slate-500">F${f}</span><span class="text-[10px] text-slate-600">inverse</span></div>
+      <div class="flex gap-1.5">
+        ${s.map(bit=>`<div class="w-7 h-7 grid place-items-center rounded-md border ${bit?'bg-amber-400/15 border-amber-300/30 text-amber-200':'bg-slate-900 border-slate-800 text-slate-600'} mono text-sm">${bit}</div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Phase Register
+  document.getElementById('phaseReal').textContent = phaseReal + '°';
+  document.getElementById('phaseInv').textContent = phaseInv + '°';
+  document.querySelectorAll('.phase-dot').forEach((el,i)=>{
+    const deg = i*90;
+    el.classList.toggle('bg-cyan-500/20', deg===phaseReal);
+    el.classList.toggle('border-cyan-400/50', deg===phaseReal);
+    el.classList.toggle('text-cyan-200', deg===phaseReal);
+  });
+  document.querySelectorAll('.phase-dot-inv').forEach((el,i)=>{
+    const deg = i*90;
+    const active = deg===phaseInv;
+    el.classList.toggle('bg-amber-500/15', active);
+    el.classList.toggle('border-amber-400/50', active);
+    el.classList.toggle('text-amber-200', active);
+  });
+
+  // 1-Register
+  const oneLight = document.getElementById('oneRegLight');
+  const oneState = document.getElementById('oneRegState');
+  oneState.textContent = state.one;
+  oneLight.className = `w-10 h-10 rounded-xl grid place-items-center transition border ${state.one ? 'bg-amber-500/20 border-amber-400/50' : 'bg-slate-800 border-slate-700'}`;
+  oneLight.innerHTML = `<div class="w-3 h-3 rounded-full ${state.one ? 'bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,.8)]' : 'bg-slate-600'}"></div>`;
+
+  // PoW
+  const powEl = document.getElementById('powStatus');
+  powEl.textContent = state.pow;
+  powEl.className = `mono text-xl ${state.pow==='COMPLETE' ? 'text-cyan-300' : 'text-slate-300'}`;
+}
+
+function descend(){
+  state.h = state.h >= 28 ? 1 : state.h + 1;
+  if(state.h===1 && state.pow==='COMPLETE') state.pow='IN PROGRESS';
+  updateAll();
+  ping();
+}
+function ascend(){
+  state.h = state.h <= 1 ? 28 : state.h - 1;
+  updateAll();
+  ping();
+}
+function ping(){
+  const core = document.getElementById('core');
+  core.style.transition = 'none';
+  core.style.transform = 'translate(250px,250px) scale(1.08)';
+  setTimeout(()=>{ core.style.transition='transform 300ms'; core.style.transform='translate(250px,250px) scale(1)'; }, 80);
+}
+
+document.getElementById('btnDescend').onclick = descend;
+document.getElementById('btnAscend').onclick = ascend;
+
+let auto = null;
+document.getElementById('btnAuto').onclick = (e)=>{
+  if(auto){ clearInterval(auto); auto=null; e.target.textContent='AUTO PULSE'; e.target.classList.remove('bg-amber-500/15','border-amber-400/40'); }
+  else { auto = setInterval(descend, 900); e.target.textContent='STOP'; e.target.classList.add('bg-amber-500/15','border-amber-400/40'); }
+};
+
+window.addEventListener('keydown', (ev)=>{
+  if(ev.code==='Space' || ev.key==='ArrowDown'){ ev.preventDefault(); descend(); }
+  if(ev.key==='ArrowUp'){ ev.preventDefault(); ascend(); }
+});
+
+updateAll();
+</script>
+</body>
+</html>

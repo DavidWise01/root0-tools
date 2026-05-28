@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>))))))))) (.) ((((((((</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    html, body {
+        height: 100%;
+        background: #000000;
+    }
+
+    body {
+        font-family: 'JetBrains Mono', monospace;
+        background: #000000;
+        color: #C8A830;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .poster {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        max-width: 1920px;
+        max-height: 1080px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        background: #000000;
+        isolation: isolate;
+    }
+
+    /* subtle vignette */
+    .poster::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.8) 100%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* grain texture */
+    .grain {
+        position: fixed;
+        inset: -50%;
+        width: 200%;
+        height: 200%;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.045;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        animation: grain 8s steps(10) infinite;
+        mix-blend-mode: screen;
+    }
+
+    @keyframes grain {
+        0%, 100% { transform: translate(0, 0) }
+        10% { transform: translate(-5%, -10%) }
+        20% { transform: translate(-15%, 5%) }
+        30% { transform: translate(7%, -25%) }
+        40% { transform: translate(-5%, 25%) }
+        50% { transform: translate(-15%, 10%) }
+        60% { transform: translate(15%, 0%) }
+        70% { transform: translate(0%, 15%) }
+        80% { transform: translate(3%, 35%) }
+        90% { transform: translate(-10%, 10%) }
+    }
+
+    .content {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(1.5rem, 4vh, 3rem);
+    }
+
+    .main {
+        font-size: clamp(20px, 4.6vw, 72px);
+        font-weight: 400;
+        line-height: 1;
+        color: #C8A830;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        text-shadow:
+            0 0 8px rgba(200, 168, 48, 0.85),
+            0 0 24px rgba(200, 168, 48, 0.5),
+            0 0 48px rgba(200, 168, 48, 0.3),
+            0 0 80px rgba(200, 168, 48, 0.15);
+        animation: pulse 6s ease-in-out infinite;
+    }
+
+    .sub {
+        font-size: clamp(10px, 1.25vw, 16px);
+        font-weight: 300;
+        color: #C8A830;
+        letter-spacing: 0.5em;
+        text-transform: lowercase;
+        opacity: 0.82;
+        text-shadow:
+            0 0 6px rgba(200, 168, 48, 0.7),
+            0 0 18px rgba(200, 168, 48, 0.4),
+            0 0 32px rgba(200, 168, 48, 0.2);
+        margin-left: 0.5em;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            text-shadow:
+                0 0 8px rgba(200, 168, 48, 0.85),
+                0 0 24px rgba(200, 168, 48, 0.5),
+                0 0 48px rgba(200, 168, 48, 0.3),
+                0 0 80px rgba(200, 168, 48, 0.15);
+            opacity: 1;
+        }
+        50% {
+            text-shadow:
+                0 0 10px rgba(200, 168, 48, 0.95),
+                0 0 30px rgba(200, 168, 48, 0.6),
+                0 0 60px rgba(200, 168, 48, 0.35),
+                0 0 100px rgba(200, 168, 48, 0.2);
+            opacity: 0.96;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .sub {
+            letter-spacing: 0.28em;
+            margin-left: 0.28em;
+        }
+        .main {
+            font-size: clamp(16px, 7vw, 28px);
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="grain"></div>
+    <main class="poster">
+        <div class="content">
+            <h1 class="main">))))))))) (.) ((((((((</h1>
+            <p class="sub">dc3 · 000 · shadow queen</p>
+        </div>
+    </main>
+</body>
+</html>

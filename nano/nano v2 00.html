@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NANO FACTORY v2 · Fission-Push Engine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "NANO FACTORY v2 · Fission-Push Engine",
+  "creator": { "@type": "Person", "name": "David Wise" },
+  "dateCreated": "2026-05",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "description": "Interactive nano-factory control panel simulating fission-push compression with 18-step core sequence and atom forge",
+  "coreSequence": [1,3,6,9,15,21,24,27,0,0,27,24,21,15,9,6,3,1],
+  "atomBuilding": true,
+  "molecules": ["H2O", "CO2", "NH3", "CH4", "C6H6", "SiO2"],
+  "operatingPrinciple": {
+    "@type": "PropertyValue",
+    "name": "Fission Compression Core",
+    "value": "18-step push-pull breathing cycle",
+    "fences": [0,1,2,4,8],
+    "plasmatonicRate": 24.5,
+    "quads": 4,
+    "zeroPointInversion": "0→0",
+    "quadRotation": "90° per cycle"
+  },
+  "isAccessibleForFree": true,
+  "keywords": "nanites, fission, compression, zero-point, plasmatonic, quad-core, atom forge, molecules"
+}
+</script>
+<style>
+  :root {
+    --bg: #001200;
+    --green: #00cc44;
+    --purple: #cc44ff;
+    --orange: #ff8800;
+  }
+  * { scrollbar-width: thin; scrollbar-color: var(--green) #000; }
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: #001200;
+    background-image: 
+      radial-gradient(ellipse at top, rgba(0,204,68,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(204,68,255,0.12) 0%, transparent 60%),
+      linear-gradient(180deg, #000a00 0%, #001200 100%);
+    color: #c8facc;
+    overflow-x: hidden;
+  }
+  .orbitron { font-family: 'Orbitron', sans-serif; }
+  .glow-green { color: var(--green); text-shadow: 0 0 6px var(--green), 0 0 18px rgba(0,204,68,0.6); }
+  .glow-purple { color: var(--purple); text-shadow: 0 0 6px var(--purple), 0 0 18px rgba(204,68,255,0.6); }
+  .glow-orange { color: var(--orange); text-shadow: 0 0 6px var(--orange), 0 0 18px rgba(255,136,0,0.6); }
+  .panel {
+    background: rgba(0, 12, 0, 0.72);
+    border: 1px solid rgba(0,204,68,0.25);
+    backdrop-filter: blur(14px);
+    box-shadow: 
+      0 0 40px rgba(0,204,68,0.08),
+      inset 0 1px 0 rgba(0,204,68,0.15),
+      inset 0 -1px 12px rgba(0,0,0,0.8);
+    position: relative;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(0,204,68,0.03) 50%, transparent 100%);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .panel-purple { border-color: rgba(204,68,255,0.35); box-shadow: 0 0 40px rgba(204,68,255,0.12), inset 0 1px 0 rgba(204,68,255,0.2); }
+  .panel-orange { border-color: rgba(255,136,0,0.35); box-shadow: 0 0 40px rgba(255,136,0,0.12), inset 0 1px 0 rgba(255,136,0,0.2); }
+  .grid-bg {
+    background-image: 
+      linear-gradient(rgba(0,204,68,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,204,68,0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+    animation: gridMove 20s linear infinite;
+  }
+  @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 28px 28px; } }
+  .inversion { animation: breathe 0.9s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes breathe {
+    0% { filter: brightness(1) saturate(1); }
+    30% { filter: brightness(1.7) saturate(1.4) hue-rotate(15deg); }
+    60% { filter: brightness(0.7) saturate(1.8) hue-rotate(-10deg); }
+    100% { filter: brightness(1) saturate(1); }
+  }
+  .quad-btn {
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    background: rgba(0,0,0,0.6);
+  }
+  .quad-btn:hover { transform: translateY(-2px) scale(1.02); }
+  .quad-btn.active { box-shadow: 0 0 25px currentColor, inset 0 0 20px rgba(255,255,255,0.05); }
+  .fence-led { transition: all 0.4s ease; }
+  .fence-led.active { filter: brightness(1.8); box-shadow: 0 0 12px currentColor; }
+  canvas { image-rendering: optimizeSpeed; }
+</style>
+</head>
+<body class="min-h-screen selection:bg-[#00cc44]/30 selection:text-white">
+<div class="max-w-[1920px] mx-auto p-2 md:p-4 lg:p-6">
+
+  <!-- HEADER -->
+  <header class="panel rounded-2xl mb-4 overflow-hidden" role="banner" aria-label="Nano Factory Header">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-4 border-b border-[#00cc44]/15">
+      <div>
+        <h1 class="orbitron text-[22px] md:text-[28px] lg:text-[32px] font-black glow-green tracking-wider leading-none">NANO FACTORY v2 · Fission-Push Engine</h1>
+        <p class="text-[11px] mt-1 tracking-[0.2em] text-[#00cc44]/70 uppercase">Merit for Production · David Wise · May 2026</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="h-px w-12 bg-gradient-to-r from-transparent to-[#cc44ff]/50 hidden lg:block"></div>
+        <div class="text-[10px] md:text-xs uppercase tracking-[0.35em] px-3 py-1.5 rounded-full border border-[#cc44ff]/40 bg-[#cc44ff]/10 glow-purple font-semibold">Level Playing Field — Public Domain</div>
+      </div>
+    </div>
+    
+    <!-- METRICS -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[#00cc44]/10" role="status" aria-live="polite">
+      <div class="bg-black/40 p-3 backdrop-blur-sm">
+        <div class="text-[10px] uppercase tracking-widest text-[#00cc44]/60">Nanites Active</div>
+        <div id="metric-nanites" class="orbitron text-2xl glow-green" data-robot="nanites-active">0</div>
+      </div>
+      <div class="bg-black/40 p-3">
+        <div class="text-[10px] uppercase tracking-widest text-[#cc44ff]/60">Compression Cycles</div>
+        <div id="metric-cycles" class="orbitron text-2xl glow-purple" data-robot="compression-cycles">0</div>
+      </div>
+      <div class="bg-black/40 p-3">
+        <div class="text-[10px] uppercase tracking-widest text-[#ff8800]/60">Zero-Point Hits</div>
+        <div id="metric-zero" class="orbitron text-2xl glow-orange" data-robot="zero-point-hits">0</div>
+      </div>
+      <div class="bg-black/40 p-3">
+        <div class="text-[10px] uppercase tracking-widest text-[#00cc44]/60">Production Rate</div>
+        <div class="flex items-baseline gap-1">
+          <span id="metric-rate" class="orbitron text-2xl glow-green" data-robot="production-rate">0.0</span>
+          <span class="text-xs text-[#00cc44]/50">u/m</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="factory" class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start" 
+        data-cycle-position="0" 
+        data-sequence-value="1"
+        data-zero-point-state="expansion"
+        data-quad-rotation="0"
+        data-plasmatonic-rate="24.5"
+        aria-label="Fission Push Engine Control Interface">
+
+    <!-- LEFT: CATALOG -->
+    <section class="panel panel-purple rounded-2xl p-4 lg:col-span-3 lg:sticky lg:top-4" aria-labelledby="catalog-title">
+      <div class="flex items-center justify-between mb-3">
+        <h2 id="catalog-title" class="orbitron text-sm glow-purple tracking-widest">NANITE CATALOG</h2>
+        <span class="text-[10px] px-2 py-0.5 rounded bg-[#cc44ff]/15 text-[#cc44ff] border border-[#cc44ff]/30">4 QUADS</span>
+      </div>
+      
+      <div id="quadContainer" class="relative w-full aspect-square mx-auto max-w-[280px] transition-transform duration-1000 ease-out" style="transform: rotate(0deg);" data-robot-rotation="0">
+        <div class="absolute inset-0 rounded-full border border-[#cc44ff]/20"></div>
+        <div class="absolute inset-[12%] rounded-full border border-dashed border-[#cc44ff]/15"></div>
+        
+        <!-- Q1 -->
+        <button class="quad-btn active group absolute w-[44%] h-[44%] left-[3%] top-[3%] rounded-2xl border-2 border-[#00cc44]/60 bg-black/70 flex flex-col items-center justify-center" 
+                data-quad="0" data-type="assembler" data-count="0" draggable="true" aria-label="Quad 1 Scanner">
+          <div class="orbitron text-3xl glow-green leading-none">Q1</div>
+          <div class="text-[10px] uppercase tracking-widest text-[#00cc44]/80 mt-1">Scanner</div>
+          <div class="mt-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#00cc44]/15 text-[#00cc44] border border-[#00cc44]/30" data-count-display>0</div>
+          <div class="absolute -bottom-1 -right-1 w-2 h-2 rounded-full bg-[#00cc44] animate-pulse" style="box-shadow:0 0 8px #00cc44"></div>
+        </button>
+        
+        <!-- Q2 -->
+        <button class="quad-btn group absolute w-[44%] h-[44%] right-[3%] top-[3%] rounded-2xl border-2 border-[#cc44ff]/50 bg-black/70 flex flex-col items-center justify-center" 
+                data-quad="1" data-type="transporter" data-count="0" draggable="true" aria-label="Quad 2 Binder">
+          <div class="orbitron text-3xl glow-purple leading-none">Q2</div>
+          <div class="text-[10px] uppercase tracking-widest text-[#cc44ff]/80 mt-1">Binder</div>
+          <div class="mt-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#cc44ff]/15 text-[#cc44ff] border border-[#cc44ff]/30" data-count-display>0</div>
+        </button>
+        
+        <!-- Q3 -->
+        <button class="quad-btn group absolute w-[44%] h-[44%] left-[3%] bottom-[3%] rounded-2xl border-2 border-[#ff8800]/50 bg-black/70 flex flex-col items-center justify-center" 
+                data-quad="2" data-type="forge" data-count="0" draggable="true" aria-label="Quad 3 Assembler">
+          <div class="orbitron text-3xl glow-orange leading-none">Q3</div>
+          <div class="text-[10px] uppercase tracking-widest text-[#ff8800]/80 mt-1">Assembler</div>
+          <div class="mt-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#ff8800]/15 text-[#ff8800] border border-[#ff8800]/30" data-count-display>0</div>
+        </button>
+        
+        <!-- Q4 -->
+        <button class="quad-btn group absolute w-[44%] h-[44%] right-[3%] bottom-[3%] rounded-2xl border-2 border-[#00aaff]/50 bg-black/70 flex flex-col items-center justify-center" 
+                data-quad="3" data-type="binder" data-count="0" draggable="true" aria-label="Quad 4 Compressor">
+          <div class="orbitron text-3xl leading-none" style="color:#00ddaa; text-shadow:0 0 6px #00ddaa;">Q4</div>
+          <div class="text-[10px] uppercase tracking-widest mt-1" style="color: rgba(0,221,170,0.8)">Compressor</div>
+          <div class="mt-1 text-[11px] font-mono px-1.5 py-0.5 rounded border" style="background:rgba(0,221,170,0.15); color:#00ddaa; border-color:rgba(0,221,170,0.3)" data-count-display>0</div>
+        </button>
+
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="w-10 h-10 rounded-full border-2 border-[#00cc44]/40 flex items-center justify-center bg-black/80">
+            <div class="w-2 h-2 rounded-full bg-[#00cc44] animate-ping"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 rounded-xl bg-black/50 border border-[#cc44ff]/20">
+        <div class="text-[10px] uppercase tracking-widest text-[#cc44ff]/70 mb-1">Rotation Protocol</div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs">90° per cycle</span>
+          <span id="rotation-display" class="orbitron text-sm glow-purple" data-robot="quad-angle">0°</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER: SWARM -->
+    <section class="panel rounded-2xl p-3 md:p-4 lg:col-span-6 overflow-hidden" aria-labelledby="swarm-title">
+      <div class="grid-bg absolute inset-0 opacity-[0.15] pointer-events-none"></div>
+      
+      <div class="relative z-10 flex items-center justify-between mb-2">
+        <h2 id="swarm-title" class="orbitron text-sm glow-green tracking-widest flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[#00cc44] animate-pulse" style="box-shadow:0 0 10px #00cc44"></span>
+          SWARM VISUALIZER
+        </h2>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] uppercase tracking-widest text-[#00cc44]/60">18-step</span>
+          <div id="sequenceDisplay" class="flex gap-0.5" aria-label="Core sequence" data-robot-sequence="1,3,6,9,15,21,24,27,0,0,27,24,21,15,9,6,3,1"></div>
+        </div>
+      </div>
+
+      <div id="swarmContainer" class="relative w-full aspect-[16/10] md:aspect-[16/9] lg:aspect-[4/3] bg-black/70 rounded-xl overflow-hidden border border-[#00cc44]/25" style="box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 0 30px rgba(0,204,68,0.1);">
+        <canvas id="swarm" class="absolute inset-0 w-full h-full cursor-crosshair touch-none" data-interactive="true" data-sequence-index="0" aria-label="Nanite swarm canvas - click to spawn"></canvas>
+        
+        <!-- HUD overlays -->
+        <div class="absolute top-2 left-2 flex items-center gap-2 pointer-events-none">
+          <div class="px-2 py-1 rounded-md bg-black/70 border border-[#00cc44]/30 text-[10px] font-mono">
+            <span class="text-[#00cc44]/60">RADIUS</span> <span id="hud-radius" class="text-[#00cc44] ml-1">--</span>
+          </div>
+          <div class="px-2 py-1 rounded-md bg-black/70 border border-[#ff8800]/30 text-[10px] font-mono">
+            <span class="text-[#ff8800]/60">STATE</span> <span id="hud-state" class="text-[#ff8800] ml-1">EXPAND</span>
+          </div>
+        </div>
+
+        <div class="absolute bottom-2 right-2 pointer-events-none">
+          <div class="px-2.5 py-1 rounded-full bg-black/80 border border-[#cc44ff]/40 text-[10px] font-mono flex items-center gap-1.5">
+            <span id="zero-indicator" class="w-1.5 h-1.5 rounded-full bg-[#333] transition-all"></span>
+            <span class="text-[#cc44ff]/80">ZERO-POINT</span>
+          </div>
+        </div>
+
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-500" id="breathOverlay">
+          <div class="text-center">
+            <div class="orbitron text-5xl md:text-7xl font-black glow-orange" style="animation: breathe 0.9s ease-out;">0→0</div>
+            <div class="text-xs tracking-[0.4em] text-[#ff8800]/80 mt-2">INVERSION</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+        <div class="flex items-center gap-3">
+          <span class="text-[#00cc44]/60">CLICK <span class="text-[#00cc44]">SPAWN</span></span>
+          <span class="text-[#cc44ff]/60 hidden sm:inline">DRAG QUAD <span class="text-[#cc44ff]">MASS DEPLOY</span></span>
+        </div>
+        <div class="flex items-center gap-2 text-[10px]">
+          <span class="px-2 py-0.5 rounded bg-[#00cc44]/10 border border-[#00cc44]/20 text-[#00cc44]">Q1</span>
+          <span class="px-2 py-0.5 rounded bg-[#cc44ff]/10 border border-[#cc44ff]/20 text-[#cc44ff]">Q2</span>
+          <span class="px-2 py-0.5 rounded bg-[#ff8800]/10 border border-[#ff8800]/20 text-[#ff8800]">Q3</span>
+          <span class="px-2 py-0.5 rounded border" style="background:rgba(0,221,170,0.1); border-color:rgba(0,221,170,0.2); color:#00ddaa">Q4</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: CONTROLS -->
+    <section class="panel panel-orange rounded-2xl p-4 lg:col-span-3" aria-labelledby="core-title">
+      <h2 id="core-title" class="orbitron text-sm glow-orange tracking-widest mb-3">FISSION CORE</h2>
+      
+      <div class="space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] uppercase tracking-widest text-[#ff8800]/70">5 Fences</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/60 border border-[#ff8800]/20 text-[#ff8800]/80">0·1·2·4·8</span>
+          </div>
+          <div id="fences" class="grid grid-cols-5 gap-1.5" role="group" aria-label="Fission fences">
+            <!-- generated by JS -->
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-black/50 border border-[#ff8800]/20">
+          <div class="text-[10px] uppercase tracking-widest text-[#ff8800]/60 mb-1">Current Cycle Position</div>
+          <div class="flex items-end justify-between">
+            <div id="cyclePos" class="orbitron text-3xl glow-orange leading-none" data-robot="cycle-pos">01/18</div>
+            <div class="text-right">
+              <div id="cycleValue" class="text-xl font-mono text-[#ff8800]">1</div>
+              <div class="text-[10px] text-[#ff8800]/60 -mt-1">sequence</div>
+            </div>
+          </div>
+          <div class="mt-2 h-1.5 w-full bg-black/70 rounded-full overflow-hidden border border-[#ff8800]/15">
+            <div id="cycleProgress" class="h-full bg-gradient-to-r from-[#ff8800] to-[#cc44ff] transition-all duration-300" style="width:5.5%"></div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-black/50 border border-[#00cc44]/20">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] uppercase tracking-widest text-[#00cc44]/70">Plasmatonic Rate</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-[#00cc44]/15 text-[#00cc44] border border-[#00cc44]/30">STABLE</span>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <div class="orbitron text-[28px] leading-none glow-green">24.5</div>
+            <div class="text-[11px] text-[#00cc44]/70">cycles·kHz</div>
+          </div>
+          <div class="mt-2 relative h-8">
+            <svg class="w-full h-full" viewBox="0 0 200 32" preserveAspectRatio="none">
+              <path id="rateWave" d="M0 16 Q 25 8, 50 16 T 100 16 T 150 16 T 200 16" fill="none" stroke="#00cc44" stroke-width="1.5" opacity="0.8" style="filter: drop-shadow(0 0 4px #00cc44)"/>
+              <path d="M0 16 Q 25 24, 50 16 T 100 16 T 150 16 T 200 16" fill="none" stroke="#00cc44" stroke-width="0.5" opacity="0.3"/>
+            </svg>
+            <div class="absolute inset-0" style="background: linear-gradient(90deg, transparent, rgba(0,204,68,0.15), transparent); animation: scan 2s linear infinite;"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-pulse" class="group relative overflow-hidden px-3 py-2.5 rounded-xl bg-[#ff8800]/10 border border-[#ff8800]/30 hover:bg-[#ff8800]/20 transition-all">
+            <div class="relative z-10 flex flex-col items-start">
+              <span class="text-[10px] uppercase tracking-widest text-[#ff8800]/80">Trigger</span>
+              <span class="text-sm font-semibold text-[#ff8800]">Manual 0→0</span>
+            </div>
+            <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style="background: radial-gradient(circle at center, rgba(255,136,0,0.2), transparent 70%)"></div>
+          </button>
+          <button id="btn-clear" class="px-3 py-2.5 rounded-xl bg-black/60 border border-[#00cc44]/20 hover:border-[#00cc44]/40 transition-all">
+            <div class="flex flex-col items-start">
+              <span class="text-[10px] uppercase tracking-widest text-[#00cc44]/60">System</span>
+              <span class="text-sm font-semibold text-[#00cc44]/90">Clear Swarm</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- ATOM FORGE -->
+      <div class="mt-5 pt-4 border-t border-[#ff8800]/20">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="orbitron text-xs tracking-widest" style="color:#00ddaa; text-shadow:0 0 6px #00ddaa">ATOM FORGE</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] uppercase text-[#00ddaa]/60">Molecules</span>
+            <span id="molecules-built" class="orbitron text-base" style="color:#00ddaa">0</span>
+          </div>
+        </div>
+
+        <div id="atom-inventory" class="grid grid-cols-3 gap-1.5 mb-3">
+          <!-- generated -->
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-auto-forge" class="px-2.5 py-2 rounded-lg bg-[#00ddaa]/10 border border-[#00ddaa]/30 hover:bg-[#00ddaa]/20 transition-all">
+            <div class="text-[10px] uppercase tracking-widest" style="color:rgba(0,221,170,0.8)">Auto-Forge</div>
+            <div id="auto-forge-status" class="text-xs font-semibold" style="color:#00ddaa">ON</div>
+          </button>
+          <button id="btn-complex" class="px-2.5 py-2 rounded-lg bg-black/60 border border-[#cc44ff]/30 hover:border-[#cc44ff]/50 transition-all">
+            <div class="text-[10px] uppercase tracking-widest text-[#cc44ff]/70">Complex Mode</div>
+            <div id="complex-status" class="text-xs font-semibold text-[#cc44ff]/90">OFF</div>
+          </button>
+        </div>
+
+        <div class="mt-3 p-2.5 rounded-lg bg-black/50 border border-[#00ddaa]/15">
+          <div class="text-[10px] uppercase tracking-widest mb-1" style="color:rgba(0,221,170,0.6)">Quad Roles</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-mono">
+            <div><span style="color:#00cc44">Q1</span> <span class="text-[#c8facc]/60">Scan 1·3·6·9</span></div>
+            <div><span style="color:#cc44ff">Q2</span> <span class="text-[#c8facc]/60">Bind 15·21·24</span></div>
+            <div><span style="color:#ff8800">Q3</span> <span class="text-[#c8facc]/60">Build @27</span></div>
+            <div><span style="color:#00ddaa">Q4</span> <span class="text-[#c8facc]/60">Compress 0→0</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM: ASSEMBLY -->
+    <section class="panel rounded-2xl p-4 lg:col-span-12" aria-labelledby="assembly-title">
+      <div class="flex items-center justify-between mb-3">
+        <h2 id="assembly-title" class="orbitron text-sm glow-green tracking-widest flex items-center gap-2">
+          <span>ASSEMBLY QUEUE</span>
+          <span class="w-1 h-1 rounded-full bg-[#00cc44] animate-pulse"></span>
+        </h2>
+        <div class="flex items-center gap-3 text-[10px] font-mono">
+          <span class="text-[#00cc44]/60">FISSION-PUSH ACTIVE</span>
+          <span class="px-2 py-0.5 rounded-full bg-[#00cc44]/10 border border-[#00cc44]/20 text-[#00cc44]">LIVE</span>
+        </div>
+      </div>
+      
+      <div id="queue" class="flex gap-2 overflow-x-auto pb-2 min-h-[72px] items-center" role="list" aria-label="Production queue" data-robot="assembly-queue">
+        <div class="flex-shrink-0 w-[200px] h-[64px] rounded-xl border-2 border-dashed border-[#00cc44]/20 bg-black/30 flex items-center justify-center text-[11px] text-[#00cc44]/40 uppercase tracking-widest pointer-events-none">
+          Awaiting 0→0 Compression
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-6 text-center text-[10px] text-[#00cc44]/40 tracking-widest uppercase">
+    Fission-Push logic: 1→3→6→9→15→21→24→27→0→0→27→24→21→15→9→6→3→1 • 5 fences [0,1,2,4,8] • Quad rotation 90°/cycle
+  </footer>
+</div>
+
+<script>
+(() => {
+  // CORE CONSTANTS
+  const SEQUENCE = [1,3,6,9,15,21,24,27,0,0,27,24,21,15,9,6,3,1];
+  const FENCES = [0,1,2,4,8];
+  const QUAD_COLORS = ['#00cc44', '#cc44ff', '#ff8800', '#00ddaa'];
+  const QUAD_NAMES = ['SCANNER','BINDER','ASSEMBLER','COMPRESSOR'];
+  const ATOM_DEFS = {
+    H: {color:'#ffffff', size:2.6},
+    C: {color:'#b0b0b0', size:3.4},
+    O: {color:'#ff4d4d', size:3.8},
+    N: {color:'#5b8def', size:3.6},
+    Si:{color:'#8de2ff', size:4.2},
+    Au:{color:'#ffd700', size:4.8}
+  };
+  
+  // STATE
+  const state = {
+    cyclePos: 0,
+    prevVal: 1,
+    compressionCycles: 0,
+    zeroPointHits: 0,
+    unitsProduced: 0,
+    quadRotation: 0,
+    activeQuad: 0,
+    startTime: performance.now(),
+    isCompressing: false,
+    atoms: [],
+    molecules: [],
+    inventory: {H:0,C:0,O:0,N:0,Si:0,Au:0},
+    moleculesBuilt: 0,
+    autoForge: true,
+    complexMode: false
+  };
+
+  let nanites = [];
+  const canvas = document.getElementById('swarm');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  let cw, ch, cx, cy;
+  let lastStep = 0;
+  const STEP_MS = 265;
+
+  // DOM
+  const factory = document.getElementById('factory');
+  const quadContainer = document.getElementById('quadContainer');
+  const swarmContainer = document.getElementById('swarmContainer');
+  const sequenceDisplay = document.getElementById('sequenceDisplay');
+  const breathOverlay = document.getElementById('breathOverlay');
+  
+  // INIT UI
+  function initFences() {
+    const wrap = document.getElementById('fences');
+    wrap.innerHTML = '';
+    FENCES.forEach((f,i) => {
+      const el = document.createElement('div');
+      el.className = 'fence-led relative';
+      el.dataset.fenceValue = f;
+      el.innerHTML = `
+        <div class="h-[56px] rounded-lg bg-black/70 border border-[#ff8800]/20 flex flex-col items-center justify-end p-1 overflow-hidden relative">
+          <div class="fence-bar absolute bottom-1 left-1 right-1 rounded transition-all duration-500" style="height:${8+f*10}%; background:${f===0?'#ff8800':'#ff8800'}; opacity:0.2; box-shadow:0 0 0 transparent;"></div>
+          <span class="relative z-10 text-[10px] font-mono text-[#ff8800]/70">${f}</span>
+        </div>`;
+      wrap.appendChild(el);
+    });
+  }
+
+  function initSequence() {
+    sequenceDisplay.innerHTML = '';
+    SEQUENCE.forEach((v,i) => {
+      const s = document.createElement('span');
+      s.textContent = v;
+      s.dataset.seqIndex = i;
+      s.className = 'w-5 h-5 flex items-center justify-center text-[10px] font-mono rounded transition-all duration-300 ' + 
+        (i===0 ? 'bg-[#ff8800] text-black scale-110' : 'bg-black/60 text-[#00cc44]/50 border border-[#00cc44]/15');
+      sequenceDisplay.appendChild(s);
+    });
+  }
+
+  // CANVAS SETUP
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cw = canvas.width = rect.width * dpr;
+    ch = canvas.height = rect.height * dpr;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr, dpr);
+    cx = rect.width / 2;
+    cy = rect.height / 2;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // NANITES
+  function spawnNanite(quad, angle=null, radius=null) {
+    const a = angle ?? Math.random() * Math.PI * 2;
+    const r = radius ?? 80 + Math.random()*120;
+    nanites.push({
+      id: Math.random().toString(36).slice(2),
+      quad,
+      angle: a,
+      radius: r,
+      targetRadius: r,
+      speed: 0.002 + Math.random()*0.005,
+      size: 1.2 + Math.random()*1.8,
+      phase: Math.random()*Math.PI*2,
+      life: 1
+    });
+    updateCounts();
+  }
+
+  function initNanites() {
+    nanites = [];
+    for(let q=0;q<4;q++) {
+      for(let i=0;i<32;i++) {
+        spawnNanite(q, (Math.PI/2)*q + (i/32)*Math.PI*1.8 + Math.random()*0.4, 70 + Math.random()*140);
+      }
+    }
+  }
+
+  function updateCounts() {
+    const counts = [0,0,0,0];
+    nanites.forEach(n => counts[n.quad]++);
+    document.querySelectorAll('[data-quad]').forEach(btn => {
+      const q = +btn.dataset.quad;
+      btn.dataset.count = counts[q];
+      btn.querySelector('[data-count-display]').textContent = counts[q];
+    });
+    document.getElementById('metric-nanites').textContent = nanites.length;
+    factory.dataset.nanitesActive = nanites.length;
+  }
+
+  // ATOM FORGE FUNCTIONS
+  function spawnAtom(type){
+    if(!cx || !cy) return;
+    const angle = Math.random()*Math.PI*2;
+    const r = 90 + Math.random()*110;
+    const x = cx + Math.cos(angle)*r;
+    const y = cy + Math.sin(angle)*r*0.82;
+    state.atoms.push({
+      id: Math.random().toString(36).slice(2,9),
+      type,
+      x, y,
+      vx:(Math.random()-0.5)*0.4,
+      vy:(Math.random()-0.5)*0.4,
+      bonded:false,
+      bondPartner:null
+    });
+    state.inventory[type] = (state.inventory[type]||0)+1;
+    updateAtomInventoryUI();
+  }
+
+  function removeAtomsFromPool(type, count){
+    let removed=0;
+    for(let i=state.atoms.length-1;i>=0 && removed<count;i--){
+      if(state.atoms[i].type===type && !state.atoms[i].bonded){
+        state.atoms.splice(i,1);
+        removed++;
+      }
+    }
+    for(let i=state.atoms.length-1;i>=0 && removed<count;i--){
+      if(state.atoms[i].type===type){
+        state.atoms.splice(i,1);
+        removed++;
+      }
+    }
+  }
+
+  function updateAtomInventoryUI(){
+    const wrap = document.getElementById('atom-inventory');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    const order = ['H','C','O','N','Si','Au'];
+    const colors = {H:'#ffffff',C:'#b0b0b0',O:'#ff5555',N:'#6699ff',Si:'#8de2ff',Au:'#ffd700'};
+    order.forEach(k=>{
+      const v = state.inventory[k]||0;
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between px-2 py-1 rounded bg-black/60 border border-white/10';
+      div.innerHTML = `<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:${colors[k]};box-shadow:0 0 6px ${colors[k]}"></span><span style="color:${colors[k]}">${k}</span></span><span class="font-mono" style="color:${colors[k]}">${v}</span>`;
+      wrap.appendChild(div);
+    });
+  }
+
+  function attemptBindAtoms(phase){
+    const free = state.atoms.filter(a=>!a.bonded);
+    for(let i=0;i<free.length-1;i++){
+      const a = free[i];
+      const b = free[i+1];
+      const d = Math.hypot(a.x-b.x, a.y-b.y);
+      if(d < 70 + phase*0.5){
+        a.bonded = true; b.bonded = true;
+        a.bondPartner = b.id; b.bondPartner = a.id;
+        a.vx += (b.x-a.x)*0.002; a.vy += (b.y-a.y)*0.002;
+        b.vx -= (b.x-a.x)*0.002; b.vy -= (b.y-a.y)*0.002;
+      }
+    }
+  }
+
+  function attemptMoleculeFormation(){
+    const recipes = [
+      {name:'H2O', req:{H:2,O:1}, color:'#4da6ff'},
+      {name:'CO2', req:{C:1,O:2}, color:'#bbbbbb'},
+      {name:'NH3', req:{N:1,H:3}, color:'#6ea8fe'},
+      {name:'CH4', req:{C:1,H:4}, color:'#00e396'},
+      {name:'C6H6', req:{C:6,H:6}, color:'#cc44ff'},
+      {name:'SiO2', req:{Si:1,O:2}, color:'#88ddff'},
+    ];
+    if(state.complexMode){
+      recipes.push({name:'NANO-LATTICE', req:{Si:2,C:2,Au:1}, color:'#ffd700'});
+    }
+    for(let i=recipes.length-1;i>=0;i--){
+      const r = recipes[i];
+      let ok = true;
+      for(const [k,v] of Object.entries(r.req)){
+        if((state.inventory[k]||0) < v){ ok=false; break; }
+      }
+      if(ok){
+        for(const [k,v] of Object.entries(r.req)){
+          state.inventory[k] -= v;
+          removeAtomsFromPool(k,v);
+        }
+        createMolecule(r.name, r.color, r.req);
+        state.moleculesBuilt++;
+        const mb = document.getElementById('molecules-built');
+        if(mb) mb.textContent = state.moleculesBuilt;
+        updateAtomInventoryUI();
+        break;
+      }
+    }
+  }
+
+  function createMolecule(name,color,req){
+    const atoms = [];
+    Object.entries(req).forEach(([type,count])=>{
+      for(let i=0;i<count;i++){
+        atoms.push({type, radius: name==='C6H6' ? 16 : 10 + Math.random()*3 });
+      }
+    });
+    state.molecules.push({
+      id: Math.random().toString(36).slice(2,9),
+      name,
+      color,
+      x: cx + (Math.random()-0.5)*70,
+      y: cy + (Math.random()-0.5)*40,
+      life: 380,
+      atoms
+    });
+  }
+
+  // SEQUENCE ADVANCE
+  function advanceStep() {
+    state.prevVal = SEQUENCE[state.cyclePos];
+    state.cyclePos = (state.cyclePos + 1) % SEQUENCE.length;
+    const curr = SEQUENCE[state.cyclePos];
+    const prev = state.prevVal;
+
+    // UI updates
+    document.getElementById('cyclePos').textContent = String(state.cyclePos+1).padStart(2,'0') + '/18';
+    document.getElementById('cycleValue').textContent = curr;
+    document.getElementById('cycleProgress').style.width = ((state.cyclePos+1)/18*100) + '%';
+    canvas.dataset.sequenceIndex = state.cyclePos;
+    canvas.dataset.sequenceValue = curr;
+    factory.dataset.cyclePosition = state.cyclePos;
+    factory.dataset.sequenceValue = curr;
+
+    // sequence display
+    sequenceDisplay.querySelectorAll('span').forEach((el,i) => {
+      el.className = 'w-5 h-5 flex items-center justify-center text-[10px] font-mono rounded transition-all duration-300 ' +
+        (i===state.cyclePos ? 'bg-[#ff8800] text-black scale-110 shadow-[0_0_10px_#ff8800]' : 'bg-black/60 text-[#00cc44]/50 border border-[#00cc44]/15');
+    });
+
+    // fences
+    document.querySelectorAll('#fences .fence-led').forEach((el,i) => {
+      const f = FENCES[i];
+      const bar = el.querySelector('.fence-bar');
+      const active = (curr===0 && f===0) || (curr>0 && f>0 && curr >= f*3) || (curr>=24 && f>=4);
+      el.classList.toggle('active', active);
+      if(bar) {
+        bar.style.opacity = active ? '0.9' : '0.2';
+        bar.style.boxShadow = active ? '0 0 12px #ff8800' : '0 0 0 transparent';
+      }
+    });
+
+    // target radius
+    const baseTarget = curr === 0 ? 38 : 65 + (curr/27)*155;
+    nanites.forEach(n => {
+      n.targetRadius = baseTarget + (n.quad*3) + Math.sin(n.phase)*8;
+    });
+
+    // ZERO-POINT DETECTION (0→0)
+    const isZeroPoint = prev===0 && curr===0;
+    if(isZeroPoint) {
+      triggerZeroPoint();
+    }
+
+    // state HUD
+    const isCompressing = (prev>0 && curr===0) || (prev===0 && curr===0);
+    const isExpanding = (prev===0 && curr>0);
+    state.isCompressing = isCompressing;
+    document.getElementById('hud-state').textContent = isZeroPoint ? 'INVERT' : isCompressing ? 'COMPRESS' : isExpanding ? 'EXPAND' : 'STABLE';
+    document.getElementById('hud-state').className = isZeroPoint ? 'text-[#ff8800] ml-1 animate-pulse' : isCompressing ? 'text-[#cc44ff] ml-1' : 'text-[#00cc44] ml-1';
+    document.getElementById('hud-radius').textContent = Math.round(baseTarget);
+    factory.dataset.zeroPointState = isZeroPoint ? 'inversion' : isCompressing ? 'compression' : 'expansion';
+
+    // ATOM FORGE LOGIC
+    if (state.autoForge) {
+      if (curr===1) { spawnAtom('H'); spawnAtom('H'); }
+      else if (curr===3) { spawnAtom('C'); }
+      else if (curr===6) { spawnAtom('O'); spawnAtom('O'); }
+      else if (curr===9) { spawnAtom('N'); }
+      if (curr===15 || curr===21 || curr===24) {
+        attemptBindAtoms(curr);
+      }
+      if (curr===27) {
+        attemptMoleculeFormation();
+      }
+    }
+    if(!isCompressing && Math.random()<0.3){
+      state.atoms.forEach(a=>{ if(a.bonded && Math.random()<0.08){ a.bonded=false; a.bondPartner=null; }});
+    }
+
+    // QUAD ROTATION at cycle end
+    if(state.cyclePos === 0) {
+      state.quadRotation = (state.quadRotation + 90) % 360;
+      quadContainer.style.transform = `rotate(${state.quadRotation}deg)`;
+      quadContainer.dataset.robotRotation = state.quadRotation;
+      document.getElementById('rotation-display').textContent = state.quadRotation + '°';
+      factory.dataset.quadRotation = state.quadRotation;
+    }
+
+    // zero indicator
+    const zi = document.getElementById('zero-indicator');
+    zi.style.background = isZeroPoint ? '#ff8800' : curr===0 ? '#cc44ff' : '#333';
+    zi.style.boxShadow = isZeroPoint ? '0 0 8px #ff8800' : 'none';
+  }
+
+  function triggerZeroPoint() {
+    state.zeroPointHits++;
+    state.compressionCycles++;
+    document.getElementById('metric-zero').textContent = state.zeroPointHits;
+    document.getElementById('metric-cycles').textContent = state.compressionCycles;
+    factory.dataset.compressionCycles = state.compressionCycles;
+    factory.dataset.zeroPointHits = state.zeroPointHits;
+
+    // visual pulse
+    swarmContainer.classList.add('inversion');
+    breathOverlay.style.opacity = '1';
+    setTimeout(() => {
+      swarmContainer.classList.remove('inversion');
+      breathOverlay.style.opacity = '0';
+    }, 850);
+
+    // compress nanites inward then explode
+    nanites.forEach(n => {
+      n.targetRadius = 28 + Math.random()*12;
+      n.speed *= 1.6;
+    });
+    setTimeout(() => {
+      nanites.forEach(n => n.speed /= 1.6);
+    }, 600);
+
+    // ATOM FORGE compression
+    state.atoms.forEach(a=>{
+      const dx = cx - a.x, dy = cy - a.y;
+      a.vx += dx * 0.018;
+      a.vy += dy * 0.018;
+    });
+    for(let i=0;i<state.atoms.length;i++){
+      for(let j=i+1;j<state.atoms.length;j++){
+        const a=state.atoms[i], b=state.atoms[j];
+        if(Math.hypot(a.x-b.x, a.y-b.y) < 36){
+          a.bonded = true; b.bonded = true;
+          a.bondPartner = b.id; b.bondPartner = a.id;
+        }
+      }
+    }
+    if(state.complexMode){
+      if(state.inventory.C>=2 && state.inventory.O>=2){
+        state.inventory.C-=2; state.inventory.O-=2;
+        removeAtomsFromPool('C',2); removeAtomsFromPool('O',2);
+        spawnAtom('Si');
+      }
+      if(state.inventory.Si>=1 && state.inventory.H>=2 && Math.random()<0.6){
+        state.inventory.Si-=1; state.inventory.H-=2;
+        removeAtomsFromPool('Si',1); removeAtomsFromPool('H',2);
+        spawnAtom('Au');
+      }
+      updateAtomInventoryUI();
+    }
+
+    // production - consume 1 from each quad if available
+    const hasAll = [0,1,2,3].every(q => nanites.filter(n=>n.quad===q).length >= 1);
+    if(hasAll) {
+      [0,1,2,3].forEach(q => {
+        const idx = nanites.findIndex(n=>n.quad===q);
+        if(idx>=0) nanites.splice(idx,1);
+      });
+      produceUnit();
+      updateCounts();
+    }
+  }
+
+  function produceUnit() {
+    state.unitsProduced++;
+    const elapsedMin = (performance.now() - state.startTime) / 60000;
+    const rate = (state.unitsProduced / Math.max(elapsedMin, 0.01)).toFixed(1);
+    document.getElementById('metric-rate').textContent = rate;
+    factory.dataset.productionRate = rate;
+
+    const queue = document.getElementById('queue');
+    const placeholder = queue.querySelector('.border-dashed');
+    if(placeholder) placeholder.remove();
+
+    const el = document.createElement('div');
+    el.className = 'flex-shrink-0 group relative w-[200px] h-[64px] rounded-xl bg-black/60 border border-[#00cc44]/30 overflow-hidden backdrop-blur-sm';
+    el.setAttribute('role','listitem');
+    el.dataset.producedAt = new Date().toISOString();
+    el.dataset.quadSignature = 'Q1+Q2+Q3+Q4';
+    el.innerHTML = `
+      <div class="absolute inset-0 opacity-20" style="background: linear-gradient(90deg, #00cc44, #cc44ff, #ff8800, #00ddaa);"></div>
+      <div class="relative h-full p-2.5 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] uppercase tracking-widest text-[#00cc44] font-semibold">UNIT-${String(state.unitsProduced).padStart(4,'0')}</span>
+          <span class="text-[9px] px-1.5 py-0.5 rounded bg-[#00cc44]/20 text-[#00cc44] border border-[#00cc44]/30">0→0</span>
+        </div>
+        <div class="flex items-center gap-1">
+          ${QUAD_COLORS.map(c=>`<span class="w-5 h-1 rounded-full" style="background:${c}; box-shadow:0 0 6px ${c}"></span>`).join('')}
+        </div>
+        <div class="text-[9px] font-mono text-[#00cc44]/60">${new Date().toLocaleTimeString()}</div>
+      </div>`;
+    queue.prepend(el);
+    while(queue.children.length > 12) queue.removeChild(queue.lastChild);
+  }
+
+  // DRAW LOOP
+  function draw() {
+    const w = canvas.getBoundingClientRect().width;
+    const h = canvas.getBoundingClientRect().height;
+    
+    // trail effect
+    ctx.fillStyle = 'rgba(0, 8, 0, 0.18)';
+    ctx.fillRect(0,0,w,h);
+
+    const curr = SEQUENCE[state.cyclePos];
+    const pulse = state.prevVal===0 && curr===0 ? 1 : 0;
+
+    // fences
+    FENCES.forEach((f,i) => {
+      const r = 35 + (f/8) * Math.min(w,h)*0.38;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.strokeStyle = i===0 ? 'rgba(255,136,0,0.35)' : 'rgba(0,204,68,0.12)';
+      ctx.lineWidth = i===0 ? 1.5 : 1;
+      ctx.setLineDash(i===0 ? [] : [3,6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // core glow
+    const coreBase = 16 + (curr/27)*24 + pulse*12;
+    const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,coreBase*3.5);
+    grad.addColorStop(0, `rgba(0,204,68,${0.4 + pulse*0.3})`);
+    grad.addColorStop(0.4, `rgba(204,68,255,${0.15 + pulse*0.2})`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx,cy,coreBase*3.5,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,coreBase,0,Math.PI*2);
+    ctx.fillStyle = pulse ? '#ffaa44' : '#00cc44';
+    ctx.shadowColor = pulse ? '#ff8800' : '#00cc44';
+    ctx.shadowBlur = 25 + pulse*15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // nanites
+    const rotRad = (state.quadRotation * Math.PI/180);
+    nanites.forEach(n => {
+      n.phase += 0.02;
+      n.angle += n.speed * (1 + curr/40);
+      n.radius += (n.targetRadius - n.radius) * 0.08;
+      
+      const quadOffset = n.quad * Math.PI/2 + rotRad * 0.25;
+      const a = n.angle + quadOffset;
+      const r = n.radius * (0.92 + Math.sin(n.phase*0.5)*0.04);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r * 0.82;
+      
+      const color = QUAD_COLORS[n.quad];
+      
+      // trail
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(a)*4, y - Math.sin(a)*3);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = color + '55';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // nanite
+      ctx.beginPath();
+      ctx.arc(x, y, n.size, 0, Math.PI*2);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // core highlight
+      ctx.beginPath();
+      ctx.arc(x - n.size*0.3, y - n.size*0.3, n.size*0.4, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fill();
+    });
+
+    // ATOMS
+    state.atoms.forEach(a=>{
+      a.x += a.vx; a.y += a.vy;
+      a.vx *= 0.985; a.vy *= 0.985;
+      if(state.isCompressing){
+        a.vx += (cx - a.x)*0.0007;
+        a.vy += (cy - a.y)*0.0008;
+      } else {
+        a.vx += (Math.random()-0.5)*0.015;
+        a.vy += (Math.random()-0.5)*0.015;
+      }
+      if(a.x<4) a.x=4; if(a.x>w-4) a.x=w-4;
+      if(a.y<4) a.y=4; if(a.y>h-4) a.y=h-4;
+
+      const def = ATOM_DEFS[a.type];
+      if(a.bonded && a.bondPartner){
+        const b = state.atoms.find(x=>x.id===a.bondPartner);
+        if(b && a.id < b.id){
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          const isZero = pulse===1;
+          ctx.strokeStyle = isZero ? 'rgba(255,200,120,0.95)' : def.color+'66';
+          ctx.lineWidth = isZero ? 2.4 : 1.1;
+          ctx.shadowColor = isZero ? '#ffb347' : def.color;
+          ctx.shadowBlur = isZero ? 14 : 5;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+      ctx.beginPath();
+      ctx.arc(a.x,a.y,def.size,0,Math.PI*2);
+      ctx.fillStyle = def.color;
+      ctx.shadowColor = def.color;
+      ctx.shadowBlur = a.bonded ? 13 : 7;
+      ctx.fill();
+      ctx.shadowBlur=0;
+    });
+
+    // MOLECULES
+    state.molecules = state.molecules.filter(m=>m.life>0);
+    state.molecules.forEach(m=>{
+      m.life--;
+      m.y -= 0.07;
+      m.x += Math.sin(m.life*0.03)*0.15;
+      m.atoms.forEach((at,i)=>{
+        const ang = (i/m.atoms.length)*Math.PI*2 + m.life*0.012;
+        const r = at.radius;
+        const x = m.x + Math.cos(ang)*r;
+        const y = m.y + Math.sin(ang)*r*0.8;
+        at._x = x; at._y = y;
+        const def = ATOM_DEFS[at.type];
+        ctx.beginPath();
+        ctx.arc(x,y,def.size*1.1,0,Math.PI*2);
+        ctx.fillStyle = def.color;
+        ctx.shadowColor = m.color;
+        ctx.shadowBlur = 9;
+        ctx.fill();
+        ctx.shadowBlur=0;
+      });
+      ctx.beginPath();
+      if(m.name==='C6H6'){
+        for(let i=0;i<6;i++){
+          const a=m.atoms[i], b=m.atoms[(i+1)%6];
+          ctx.moveTo(a._x,a._y); ctx.lineTo(b._x,b._y);
+        }
+      } else {
+        m.atoms.forEach(at=>{ ctx.moveTo(m.x,m.y); ctx.lineTo(at._x,at._y); });
+      }
+      ctx.strokeStyle = m.color+'cc';
+      ctx.lineWidth = 1.4;
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.shadowBlur=0;
+
+      ctx.font = 'bold 11px JetBrains Mono';
+      ctx.textAlign='center';
+      ctx.fillStyle = m.color;
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur = 8;
+      ctx.fillText(m.name, m.x, m.y - 24);
+      ctx.shadowBlur=0;
+
+      ctx.beginPath();
+      ctx.arc(m.x,m.y,2.5,0,Math.PI*2);
+      ctx.fillStyle = m.color;
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur=0;
+    });
+
+    // connections during compression
+    if(curr <= 3 || pulse) {
+      ctx.lineWidth = 0.5;
+      for(let i=0;i<nanites.length;i+=3){
+        const a = nanites[i];
+        for(let j=i+1;j<Math.min(i+4, nanites.length); j++){
+          const b = nanites[j];
+          if(a.quad !== b.quad) continue;
+          const dx = Math.cos(a.angle) * a.radius - Math.cos(b.angle) * b.radius;
+          const dy = Math.sin(a.angle) * a.radius - Math.sin(b.angle) * b.radius;
+          if(Math.abs(dx) < 60 && Math.abs(dy) < 50) {
+            const ax = cx + Math.cos(a.angle + a.quad*Math.PI/2) * a.radius;
+            const ay = cy + Math.sin(a.angle + a.quad*Math.PI/2) * a.radius *0.82;
+            const bx = cx + Math.cos(b.angle + b.quad*Math.PI/2) * b.radius;
+            const by = cy + Math.sin(b.angle + b.quad*Math.PI/2) * b.radius *0.82;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+            ctx.strokeStyle = QUAD_COLORS[a.quad] + '22';
+            ctx.stroke();
+          }
+        }
+      }
+    }
+  }
+
+  function animate(t) {
+    if(!lastStep) lastStep = t;
+    if(t - lastStep > STEP_MS) {
+      advanceStep();
+      lastStep = t;
+    }
+    draw();
+    requestAnimationFrame(animate);
+  }
+
+  // INTERACTIONS
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width/2;
+    const y = e.clientY - rect.top - rect.height/2;
+    const angle = Math.atan2(y, x*1.22);
+    spawnNanite(state.activeQuad, angle, Math.hypot(x,y*1.22));
+    // burst
+    for(let i=0;i<2;i++) setTimeout(()=>spawnNanite(state.activeQuad, angle + (Math.random()-0.5)*0.5), i*40);
+  });
+
+  canvas.addEventListener('dragover', e => e.preventDefault());
+  canvas.addEventListener('drop', e => {
+    e.preventDefault();
+    const q = +e.dataTransfer.getData('quad') || state.activeQuad;
+    for(let i=0;i<14;i++) {
+      setTimeout(()=> spawnNanite(q, Math.random()*Math.PI*2, 50 + Math.random()*100), i*30);
+    }
+  });
+
+  document.querySelectorAll('[data-quad]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-quad]').forEach(b=>b.classList.remove('active','ring-2','ring-white/20'));
+      btn.classList.add('active','ring-2','ring-white/20');
+      state.activeQuad = +btn.dataset.quad;
+    });
+    btn.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('quad', btn.dataset.quad);
+    });
+  });
+
+  document.getElementById('btn-pulse').addEventListener('click', () => {
+    // force 0→0
+    state.prevVal = 0;
+    state.cyclePos = 8;
+    advanceStep();
+  });
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    nanites = nanites.slice(0, 20);
+    state.atoms = state.atoms.slice(0,12);
+    updateCounts();
+    updateAtomInventoryUI();
+  });
+  document.getElementById('btn-auto-forge').addEventListener('click', () => {
+    state.autoForge = !state.autoForge;
+    const el = document.getElementById('auto-forge-status');
+    el.textContent = state.autoForge ? 'ON' : 'OFF';
+    el.style.color = state.autoForge ? '#00ddaa' : '#666';
+  });
+  document.getElementById('btn-complex').addEventListener('click', () => {
+    state.complexMode = !state.complexMode;
+    const el = document.getElementById('complex-status');
+    el.textContent = state.complexMode ? 'ON' : 'OFF';
+    el.style.opacity = state.complexMode ? '1' : '0.7';
+  });
+
+  // INIT
+  initFences();
+  initSequence();
+  initNanites();
+  updateCounts();
+  updateAtomInventoryUI();
+  ['H','H','C','O','O','N'].forEach(t=>spawnAtom(t));
+  advanceStep();
+  requestAnimationFrame(animate);
+
+  // periodic metric refresh
+  setInterval(() => {
+    document.getElementById('metric-nanites').textContent = nanites.length;
+  }, 1000);
+
+  // wave animation
+  let wavePhase = 0;
+  setInterval(() => {
+    wavePhase += 0.15;
+    const path = document.getElementById('rateWave');
+    if(path) {
+      const y = 16 + Math.sin(wavePhase)*2;
+      path.setAttribute('d', `M0 ${y} Q 25 ${y-6}, 50 ${y} T 100 ${y} T 150 ${y} T 200 ${y}`);
+    }
+  }, 50);
+
+  // keyboard shortcuts
+  window.addEventListener('keydown', e => {
+    if(e.key >= '1' && e.key <= '4') {
+      document.querySelector(`[data-quad="${+e.key-1}"]`).click();
+    }
+    if(e.key === ' ') {
+      e.preventDefault();
+      document.getElementById('btn-pulse').click();
+    }
+  });
+
+  // expose for debugging
+  window.NANO_FACTORY = { state, SEQUENCE, spawnNanite, spawnAtom };
+})();
+</script>
+</body>
+</html>

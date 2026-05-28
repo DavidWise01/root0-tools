@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.1 — Sentinel Board • 24 Walk</title>
+<style>
+  :root {
+    --gold: #d4af37;
+    --gold-bright: #ffd87a;
+    --gold-dark: #8b6f1e;
+    --gold-fade: rgba(212, 175, 55, 0.15);
+    --bg: #000000;
+    --cell: #050507;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: 
+      radial-gradient(1200px 800px at 50% -20%, rgba(212,175,55,0.12), transparent 60%),
+      radial-gradient(800px 600px at 90% 110%, rgba(212,175,55,0.08), transparent 50%),
+      linear-gradient(#000, #050505);
+    color: #e9e6dc;
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .app {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  header {
+    text-align: center;
+    padding-top: 4px;
+  }
+  h1 {
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    font-size: clamp(22px, 4vw, 34px);
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(212,175,55,0.55), 0 0 32px rgba(212,175,55,0.25);
+  }
+  h1 span {
+    opacity: 0.85;
+    font-weight: 300;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (min-width: 980px) {
+    main { grid-template-columns: minmax(0, 1.1fr) 340px; }
+  }
+  .board-wrap {
+    position: relative;
+    background: rgba(0,0,0,0.6);
+    border-radius: 18px;
+    padding: 14px;
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.18), 0 0 60px rgba(212,175,55,0.08), inset 0 0 40px rgba(0,0,0,0.9);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.65), rgba(212,175,55,0.18));
+    padding: 3px;
+    border-radius: 14px;
+    position: relative;
+    box-shadow: 0 0 25px rgba(212,175,55,0.12);
+  }
+  .cell {
+    aspect-ratio: 1/1;
+    background: var(--cell);
+    position: relative;
+    border: 1px solid rgba(212,175,55,0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(400px 200px at var(--mx,50%) var(--my,50%), rgba(212,175,55,0.18), transparent 40%);
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+  }
+  .cell:hover {
+    border-color: var(--gold);
+    box-shadow: inset 0 0 14px rgba(212,175,55,0.25), 0 0 18px rgba(212,175,55,0.22);
+    transform: translateY(-1px);
+    z-index: 2;
+  }
+  .cell:hover::after { opacity: 1; }
+  .cell.active {
+    background: linear-gradient(145deg, var(--gold-bright), var(--gold) 40%, var(--gold-dark) 100%);
+    border-color: var(--gold-bright);
+    box-shadow: inset 0 0 12px rgba(255,255,255,0.25), 0 0 22px rgba(212,175,55,0.55), 0 0 40px rgba(212,175,55,0.3);
+  }
+  .cell.walk {
+    box-shadow: inset 0 0 0 2px var(--gold-bright), 0 0 24px rgba(255,216,122,0.75), 0 0 48px rgba(212,175,55,0.4) !important;
+    transform: translateY(-2px) scale(1.03);
+    border-color: var(--gold-bright) !important;
+    z-index: 5;
+  }
+  .coord {
+    position: absolute;
+    top: 6px;
+    left: 7px;
+    font-size: 10px;
+    letter-spacing: .5px;
+    color: var(--gold);
+    opacity: .55;
+    font-variant-numeric: tabular-nums;
+  }
+  .idx {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(15px, 2.2vw, 22px);
+    font-weight: 600;
+    color: #d9d4c7;
+    opacity: .92;
+    text-shadow: 0 0 10px rgba(0,0,0,0.8);
+  }
+  .cell.active .coord { color: #000; opacity: .7; }
+  .cell.active .idx { color: #000; opacity: 1; text-shadow: none; }
+  .cell[data-row="8"][data-col="1"] .idx,
+  .cell[data-row="8"][data-col="8"] .idx { color: var(--gold-bright); font-weight: 700; text-shadow: 0 0 14px rgba(212,175,55,0.6); }
+
+  #pathSvg {
+    position: absolute;
+    inset: 14px;
+    border-radius: 14px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  #overlay {
+    position: absolute;
+    inset: 14px;
+    border-radius: 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .4s ease;
+    z-index: 4;
+  }
+  #overlay.visible { opacity: 1; }
+  #overlay svg, #pathSvg { width: 100%; height: 100%; display: block; }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(212,175,55,0.08), rgba(212,175,55,0.02));
+    border: 1px solid rgba(212,175,55,0.18);
+    border-radius: 16px;
+    padding: 18px 18px 16px;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.6), 0 0 30px rgba(212,175,55,0.06);
+    backdrop-filter: blur(4px);
+  }
+  .panel h2 {
+    margin: 0 0 10px;
+    color: var(--gold);
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 600;
+    opacity: .9;
+  }
+  .panel p {
+    margin: 8px 0 14px;
+    line-height: 1.5;
+    color: #c9c5b8;
+    font-size: 14px;
+  }
+  .map {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .map li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(212,175,55,0.12);
+    font-size: 13.5px;
+  }
+  .map li strong { color: var(--gold); font-weight: 600; }
+  .map li span {
+    justify-self: end;
+    font-variant-numeric: tabular-nums;
+    color: #9a937f;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(212,175,55,0.08);
+    border: 1px solid rgba(212,175,55,0.15);
+  }
+  .legend {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(212,175,55,0.25);
+    color: var(--gold);
+    background: rgba(212,175,55,0.06);
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button {
+    appearance: none;
+    border: 1px solid rgba(212,175,55,0.35);
+    background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06));
+    color: var(--gold-bright);
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: all .2s ease;
+    box-shadow: 0 0 18px rgba(212,175,55,0.12), inset 0 0 10px rgba(0,0,0,0.5);
+    font-size: 14px;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    border-color: var(--gold);
+    box-shadow: 0 0 24px rgba(212,175,55,0.28), inset 0 0 12px rgba(0,0,0,0.5);
+    background: linear-gradient(180deg, rgba(212,175,55,0.28), rgba(212,175,55,0.1));
+  }
+  button:active { transform: translateY(0); }
+  button.secondary {
+    color: #cbb67a;
+    border-color: rgba(212,175,55,0.22);
+    background: rgba(0,0,0,0.5);
+  }
+  button:disabled { opacity: .6; cursor: wait; }
+  .foot-note {
+    text-align: center;
+    font-size: 11px;
+    color: #7a735f;
+    margin-top: 4px;
+  }
+
+  /* observers + bridge */
+  .extras { margin-top: 16px; }
+  .observer-row {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .obs-cell {
+    width: 96px;
+    height: 96px;
+    background: #000;
+    border: 1px solid rgba(212,175,55,0.28);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 26px rgba(0,0,0,0.95), 0 0 18px rgba(212,175,55,0.07);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .obs-cell::before {
+    content: "";
+    position: absolute; inset: 0; border-radius: 14px;
+    background: radial-gradient(180px 100px at 50% 0%, rgba(212,175,55,0.1), transparent 65%);
+    pointer-events: none;
+  }
+  .obs-cell span {
+    color: var(--gold-bright);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: .5px;
+    text-shadow: 0 0 12px rgba(212,175,55,0.55);
+  }
+  .obs-cell em {
+    font-style: normal;
+    font-size: 10px;
+    color: #8a836c;
+    letter-spacing: 1.3px;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+  .bridge-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 280px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.07), rgba(212,175,55,0.015));
+    border: 1px solid rgba(212,175,55,0.16);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: inset 0 0 24px rgba(0,0,0,0.65);
+  }
+  .bridge-arrow { width: 190px; height: 56px; flex-shrink: 0; overflow: visible; }
+  .next-level { display: flex; flex-direction: column; gap: 7px; }
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 36px);
+    gap: 3px;
+    padding: 4px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.65), rgba(212,175,55,0.18));
+    border-radius: 9px;
+    box-shadow: 0 0 18px rgba(212,175,55,0.14);
+  }
+  .mini-cell {
+    width: 36px; height: 36px;
+    background: #050507;
+    border: 1px solid rgba(212,175,55,0.18);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #7a735f; font-weight: 600;
+  }
+  .mini-cell.active {
+    background: linear-gradient(145deg, var(--gold-bright), var(--gold) 45%, var(--gold-dark));
+    color: #000; font-weight: 800;
+    box-shadow: inset 0 0 8px rgba(255,255,255,0.28), 0 0 14px rgba(212,175,55,0.55);
+    text-shadow: 0 0 6px rgba(0,0,0,0.3);
+  }
+  .bridge-label {
+    font-size: 11px; color: var(--gold); letter-spacing: .9px; text-transform: uppercase; opacity: .92;
+  }
+  @media (max-width: 640px) {
+    .observer-row { justify-content: center; }
+    .obs-cell { width: 84px; height: 84px; }
+    .bridge-wrap { width: 100%; justify-content: center; }
+    .bridge-arrow { width: 140px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>8.1 <span>— start from here</span></h1>
+    </header>
+    <main>
+      <div>
+        <div class="board-wrap">
+          <div id="grid" class="grid" aria-label="8 by 8 sentinel grid"></div>
+          <svg id="pathSvg" viewBox="0 0 800 800" preserveAspectRatio="none"></svg>
+          <div id="overlay"><svg id="fractalSvg" viewBox="0 0 800 800" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="extras">
+          <div class="observer-row">
+            <div class="obs-cell"><span>8.9</span><em>OBSERVER</em></div>
+            <div class="obs-cell"><span>9.0</span><em>OBSERVER</em></div>
+            <div class="bridge-wrap">
+              <svg class="bridge-arrow" viewBox="0 0 300 70">
+                <defs>
+                  <linearGradient id="bridgeGrad" x1="0" x2="1">
+                    <stop offset="0%" stop-color="#8b6f1e"/>
+                    <stop offset="50%" stop-color="#ffd87a"/>
+                    <stop offset="100%" stop-color="#d4af37"/>
+                  </linearGradient>
+                  <filter id="bridgeGlow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                    <path d="M0,0 L0,8 L8,4 z" fill="#ffd87a"/>
+                  </marker>
+                </defs>
+                <path d="M5 38 C 70 38, 90 18, 145 30 S 230 58, 295 34" fill="none" stroke="url(#bridgeGrad)" stroke-width="3" filter="url(#bridgeGlow)" marker-end="url(#arrowHead)" stroke-linecap="round"/>
+                <circle cx="5" cy="38" r="3" fill="#ffd87a" filter="url(#bridgeGlow)"/>
+              </svg>
+              <div class="next-level">
+                <div class="mini-grid" title="Next level seed">
+                  <div class="mini-cell active">9.1</div>
+                  <div class="mini-cell">9.2</div>
+                  <div class="mini-cell">9.3</div>
+                  <div class="mini-cell">9.4</div>
+                </div>
+                <div class="bridge-label">PLASMA BRIDGE — 4th phase</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="panel">
+        <h2>Four Phases</h2>
+        <p>Depth rows map to matter states. Walk 24 starts at 8.1, snakes edge-centers, ends at 8.8, then jumps.</p>
+        <ul class="map">
+          <li><strong>Solid</strong> rows 1–2 <span>stable core</span></li>
+          <li><strong>Liquid</strong> rows 3–4 <span>d10 flow</span></li>
+          <li><strong>Gas</strong> rows 5–6 <span>f14 expand</span></li>
+          <li><strong>Plasma</strong> rows 7–8 + jump <span>8.8 → 9.1</span></li>
+        </ul>
+        <p>Click cells to mark. 8.9 & 9.0 are observers outside the grid — they watch, never activate.</p>
+        <div class="legend">
+          <div class="chip">Hover = gold glow</div>
+          <div class="chip">Click = activate</div>
+          <div class="chip">Walk 24 = Hamiltonian</div>
+        </div>
+      </aside>
+    </main>
+    <div class="controls">
+      <button id="walkBtn" type="button">Walk 24</button>
+      <button id="resetBtn" class="secondary" type="button">Reset</button>
+      <button id="fractalBtn" type="button">Show fractal overlay</button>
+    </div>
+    <div class="foot-note">Sentinel Board • black / gold • 64 + 2 observers • 24-step path</div>
+  </div>
+
+<script>
+(function(){
+  const grid = document.getElementById('grid');
+  const STORAGE_KEY = 'sentinel_8_1_active';
+  let active = [];
+  try { active = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){}
+
+  // Build 8x8
+  let idx = 1;
+  for (let r = 1; r <= 8; r++) {
+    for (let c = 1; c <= 8; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.dataset.idx = idx;
+      cell.setAttribute('role', 'button');
+      cell.setAttribute('aria-label', `Cell ${r}.${c}, depth ${r} ring ${c}`);
+      cell.title = `Depth = ${r}, Ring = ${c}`;
+      const label = (r===8 && c===1) ? '8.1' : (r===8 && c===8) ? '8.8' : idx;
+      cell.innerHTML = `<span class="coord">${r},${c}</span><span class="idx">${label}</span>`;
+      
+      if (active.includes(idx)) cell.classList.add('active');
+      
+      cell.addEventListener('pointermove', (e)=>{
+        const rect = cell.getBoundingClientRect();
+        cell.style.setProperty('--mx', ((e.clientX - rect.left)/rect.width*100)+'%');
+        cell.style.setProperty('--my', ((e.clientY - rect.top)/rect.height*100)+'%');
+      });
+      cell.addEventListener('click', ()=>{
+        cell.classList.toggle('active');
+        const id = Number(cell.dataset.idx);
+        if (cell.classList.contains('active')) {
+          if (!active.includes(id)) active.push(id);
+        } else {
+          active = active.filter(n => n !== id);
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(active.sort((a,b)=>a-b)));
+      });
+      grid.appendChild(cell);
+      idx++;
+    }
+  }
+
+  const pathSvg = document.getElementById('pathSvg');
+  const resetBtn = document.getElementById('resetBtn');
+  // Reset
+  resetBtn.addEventListener('click', ()=>{
+    active = [];
+    localStorage.removeItem(STORAGE_KEY);
+    document.querySelectorAll('.cell.active').forEach(c=>c.classList.remove('active'));
+    document.querySelectorAll('.cell.walk').forEach(c=>c.classList.remove('walk'));
+    pathSvg.innerHTML = '';
+  });
+
+  // Fractal overlay
+  const overlay = document.getElementById('overlay');
+  const svg = document.getElementById('fractalSvg');
+  const btn = document.getElementById('fractalBtn');
+  let shown = false;
+
+  function drawFractal(){
+    svg.innerHTML = '';
+    const W = 800, H = 800;
+    const stroke = 'rgba(212,175,55,0.55)';
+    
+    for (let row = 1; row <= 8; row++) {
+      const yTop = (row-1) * (H/8);
+      const yBot = row * (H/8);
+      let segments = Math.pow(2, row-1);
+      segments = Math.min(segments, 32);
+      
+      for (let s = 0; s < segments; s++) {
+        const xCenter = (s + 0.5) * (W / segments);
+        const spread = W / segments * 0.48;
+        const xL = xCenter - spread;
+        const xR = xCenter + spread;
+        
+        const l1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+        l1.setAttribute('x1', xL); l1.setAttribute('y1', yTop);
+        l1.setAttribute('x2', xCenter); l1.setAttribute('y2', yBot);
+        l1.setAttribute('stroke', stroke);
+        l1.setAttribute('stroke-width', Math.max(0.8, 2.2 - row*0.18));
+        l1.setAttribute('stroke-linecap','round');
+        l1.setAttribute('opacity', 0.85 - row*0.07);
+        svg.appendChild(l1);
+        const l2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+        l2.setAttribute('x1', xR); l2.setAttribute('y1', yTop);
+        l2.setAttribute('x2', xCenter); l2.setAttribute('y2', yBot);
+        l2.setAttribute('stroke', stroke);
+        l2.setAttribute('stroke-width', Math.max(0.8, 2.2 - row*0.18));
+        l2.setAttribute('stroke-linecap','round');
+        l2.setAttribute('opacity', 0.85 - row*0.07);
+        svg.appendChild(l2);
+      }
+    }
+    const diag = document.createElementNS('http://www.w3.org/2000/svg','path');
+    diag.setAttribute('d', `M0 0 L${W} ${H} M${W} 0 L0 ${H}`);
+    diag.setAttribute('stroke','rgba(212,175,55,0.22)');
+    diag.setAttribute('stroke-width','1');
+    diag.setAttribute('fill','none');
+    svg.prepend(diag);
+  }
+
+  btn.addEventListener('click', ()=>{
+    shown = !shown;
+    if (shown) {
+      drawFractal();
+      overlay.classList.add('visible');
+      btn.textContent = 'Hide fractal overlay';
+    } else {
+      overlay.classList.remove('visible');
+      btn.textContent = 'Show fractal overlay';
+    }
+  });
+
+  // Hamiltonian 24-step path: start 8,1 → end 8,8, snake edge-centers first
+  const walkPath = [
+    {r:8,c:1}, {r:7,c:1}, {r:6,c:1}, {r:5,c:1}, {r:4,c:1},
+    {r:3,c:1}, {r:2,c:1}, {r:1,c:1}, {r:1,c:2}, {r:1,c:3},
+    {r:1,c:4}, {r:1,c:5}, {r:1,c:6}, {r:1,c:7}, {r:1,c:8},
+    {r:2,c:8}, {r:3,c:8}, {r:4,c:8}, {r:5,c:8}, {r:5,c:7},
+    {r:6,c:7}, {r:7,c:7}, {r:8,c:7}, {r:8,c:8}
+  ];
+
+  const walkBtn = document.getElementById('walkBtn');
+  let walking = false;
+
+  async function startWalk(){
+    if(walking) return;
+    walking = true;
+    walkBtn.disabled = true;
+    walkBtn.textContent = 'Walking…';
+    pathSvg.innerHTML = `
+      <defs>
+        <filter id="walkGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <radialGradient id="dotGrad"><stop offset="0%" stop-color="#fff6c9"/><stop offset="40%" stop-color="#ffd87a"/><stop offset="100%" stop-color="#d4af37"/></radialGradient>
+        <linearGradient id="gWalk" x1="0" x2="1"><stop offset="0%" stop-color="#8b6f1e"/><stop offset="50%" stop-color="#ffd87a"/><stop offset="100%" stop-color="#d4af37"/></linearGradient>
+      </defs>
+    `;
+    const points = walkPath.map(p => `${(p.c-0.5)*100},${(p.r-0.5)*100}`).join(' ');
+    
+    const track = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    track.setAttribute('points', points);
+    track.setAttribute('fill','none');
+    track.setAttribute('stroke','rgba(212,175,55,0.18)');
+    track.setAttribute('stroke-width','10');
+    track.setAttribute('stroke-linecap','round');
+    track.setAttribute('stroke-linejoin','round');
+    pathSvg.appendChild(track);
+
+    const prog = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    prog.setAttribute('points', points);
+    prog.setAttribute('fill','none');
+    prog.setAttribute('stroke','url(#gWalk)');
+    prog.setAttribute('stroke-width','4');
+    prog.setAttribute('stroke-linecap','round');
+    prog.setAttribute('stroke-linejoin','round');
+    prog.setAttribute('stroke-dasharray','2000');
+    prog.setAttribute('stroke-dashoffset','2000');
+    prog.style.transition = 'stroke-dashoffset 3.8s linear';
+    pathSvg.appendChild(prog);
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('r','9');
+    dot.setAttribute('fill','url(#dotGrad)');
+    dot.setAttribute('filter','url(#walkGlow)');
+    dot.setAttribute('cx', (walkPath[0].c-0.5)*100);
+    dot.setAttribute('cy', (walkPath[0].r-0.5)*100);
+    dot.style.transition = 'all 0.16s ease-out';
+    pathSvg.appendChild(dot);
+
+    document.querySelectorAll('.cell.walk').forEach(c=>c.classList.remove('walk'));
+    requestAnimationFrame(()=>{ prog.setAttribute('stroke-dashoffset','0'); });
+
+    for(let i=0;i<walkPath.length;i++){
+      const p = walkPath[i];
+      const x = (p.c-0.5)*100, y = (p.r-0.5)*100;
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      const cell = document.querySelector(`.cell[data-row="${p.r}"][data-col="${p.c}"]`);
+      if(cell){ cell.classList.add('walk'); setTimeout(()=>cell.classList.remove('walk'), 420); }
+      if(i===0){ await new Promise(r=>setTimeout(r, 200)); }
+      else { await new Promise(r=>setTimeout(r, 155)); }
+    }
+
+    // flash bridge
+    const mini = document.querySelector('.mini-cell.active');
+    mini.style.transition = 'box-shadow .3s';
+    mini.style.boxShadow = 'inset 0 0 8px rgba(255,255,255,0.3), 0 0 26px rgba(255,216,122,0.95), 0 0 48px rgba(212,175,55,0.7)';
+    setTimeout(()=>{ mini.style.boxShadow = 'inset 0 0 8px rgba(255,255,255,0.25), 0 0 12px rgba(212,175,55,0.5)'; }, 900);
+
+    walking = false;
+    walkBtn.disabled = false;
+    walkBtn.textContent = 'Walk 24';
+  }
+
+  walkBtn.addEventListener('click', startWalk);
+
+  // Keyboard
+  document.addEventListener('keydown', (e)=>{
+    if (e.key.toLowerCase() === 'r' && (e.ctrlKey || e.metaKey)) return;
+    if (e.key === 'r') resetBtn.click();
+    if (e.key === 'f') btn.click();
+    if (e.key === 'w') startWalk();
+  });
+})();
+</script>
+</body>
+</html>

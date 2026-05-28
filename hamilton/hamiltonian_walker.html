@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hamiltonian Electron Walker</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface-2: #f1efe8;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(120, 117, 110, 0.18);
+    --border-strong: rgba(120, 117, 110, 0.4);
+    --purple: #534ab7;
+    --purple-light: #cecbf6;
+    --purple-dark: #26215c;
+    --coral: #993c1d;
+    --amber: #ba7517;
+    --gray: #888780;
+    --blue: #185fa5;
+    --teal: #0f6e56;
+    --pink: #993556;
+    --pink-light: #f4c0d1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #232321;
+      --surface-2: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(241, 239, 232, 0.12);
+      --border-strong: rgba(241, 239, 232, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    margin: 0 0 8px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .canvas-wrap {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .panel-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 0 0 4px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .panel-value {
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.06s;
+  }
+  button:hover {
+    background: var(--surface-2);
+  }
+  button:active {
+    transform: scale(0.98);
+  }
+  button.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .mode-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .legend {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .explain {
+    font-size: 14px;
+    line-height: 1.65;
+    margin: 0;
+  }
+  details {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    list-style: none;
+  }
+  summary::before {
+    content: "▸ ";
+    color: var(--text-secondary);
+  }
+  details[open] summary::before {
+    content: "▾ ";
+  }
+  .details-body {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  .details-body code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-radius: 8px;
+  }
+  .speed-row label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-width: 50px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--purple);
+  }
+  .speed-val {
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 40px;
+    text-align: right;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .step-counter {
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 0.5px solid var(--border);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Hamiltonian electron walker</h1>
+  <p class="subtitle">One electron, eight nodes, two hemispheres, two bridges. Watch the path. Read the geometry.</p>
+
+  <div class="mode-row">
+    <button class="mode-btn" data-mode="protect">1. Protect</button>
+    <button class="mode-btn" data-mode="burrow">2. Burrow</button>
+    <button class="mode-btn" data-mode="gather">3. Gather</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="canvas-wrap">
+        <canvas id="cv" width="680" height="440"></canvas>
+        <div class="controls">
+          <button id="btnPlay">Pause</button>
+          <button id="btnStep">Step</button>
+          <button id="btnReset">Reset</button>
+          <button id="btnGround">Ground signal</button>
+        </div>
+        <div class="speed-row">
+          <label>Speed</label>
+          <input type="range" id="speed" min="100" max="2000" value="600" step="50">
+          <span class="speed-val" id="speedVal">600ms</span>
+        </div>
+        <p class="step-counter" id="stepCounter">step 0 of 8 — cycle 1</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <p class="panel-label">Current node</p>
+        <p class="panel-value" id="curNode" style="color: var(--coral);">−1</p>
+        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;" id="curOp">180° flip (inversion)</p>
+      </div>
+
+      <div class="panel">
+        <p class="panel-label">Mode</p>
+        <p style="font-size: 14px; margin: 0;" id="modeText">Protect — one shell, electron held safely</p>
+      </div>
+
+      <div class="legend">
+        <div><span class="swatch" style="background: #993c1d;"></span><strong style="color: #993c1d;">−1</strong> flip · <span class="swatch" style="background: #ba7517;"></span><strong style="color: #ba7517;">−i</strong> rotate −90°</div>
+        <div><span class="swatch" style="background: #888780;"></span><strong style="color: #888780;">0</strong> ground (bridge node)</div>
+        <div><span class="swatch" style="background: #185fa5;"></span><strong style="color: #185fa5;">+1</strong> identity · <span class="swatch" style="background: #0f6e56;"></span><strong style="color: #0f6e56;">+i</strong> rotate +90°</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 20px;">
+    <p class="panel-label">What's happening</p>
+    <p class="explain" id="explainText">One electron sits at the −1 node. The shell around it is its only protection — no bridge open, no path to walk. This is the resting state, the single protective shell.</p>
+  </div>
+
+  <details>
+    <summary>How the geometry works</summary>
+    <div class="details-body">
+      <p>The 8 nodes form a Hamiltonian cycle — a closed path that visits every node exactly once before returning to start. The cycle is: <code>−1 → −i → 0 → 0 → +1 → +i → 0 → 0 → −1</code>.</p>
+      <p><strong>Two hemispheres.</strong> The left hemisphere holds <code>−1</code> and <code>−i</code> — the negative side. The right hemisphere holds <code>+1</code> and <code>+i</code> — the positive side. They mirror each other across the bridge axis.</p>
+      <p><strong>Two bridges.</strong> Each pair of <code>0</code> nodes is a bridge connecting the two hemispheres. Bridges are ground points — the electron passes through them but doesn't compute there. They're where the path crosses itself without collision.</p>
+      <p><strong>Why Hamiltonian.</strong> Because each step depends only on the previous node, no two operations ever collide. Left writes to its hemisphere; right writes to its hemisphere; they meet at the bridges and pass through. No locks, no synchronization, no race conditions — the geometry forbids it.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The three modes — protect, burrow, gather</summary>
+    <div class="details-body">
+      <p><strong>Protect.</strong> One electron held at <code>−1</code>. The shell exists to keep it from being lost. Nothing moves. This is the resting state, the seed condition. Real-world analog: a charged particle at rest in a potential well, or an idle process waiting for input.</p>
+      <p><strong>Burrow.</strong> The electron walks the Hamiltonian cycle. Each step is one operation — flip, rotate, ground, identity, rotate, ground, repeat. The walker burrows through the topology, reading each node exactly once before returning. Real-world analog: a single-pass traversal of a data structure, or a charged particle moving through a chain of gates.</p>
+      <p><strong>Gather.</strong> After the first complete cycle (burrow phase), the walker keeps moving — but now it accumulates at each hemisphere node it visits. Bridges still ground, hemispheres now collect. Real-world analog: a streaming aggregator that walks the same circuit repeatedly, picking up state at each visit, dumping it through the bridge nodes.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The math (for the curious)</summary>
+    <div class="details-body">
+      <p>The values <code>{−1, −i, 0, +1, +i}</code> are points in the complex plane. Each is a transformation in 2D phase space:</p>
+      <p><code>−1</code> = 180° rotation (inversion). <code>−i</code> = −90° rotation. <code>0</code> = projection to origin (null operation). <code>+1</code> = identity. <code>+i</code> = +90° rotation.</p>
+      <p>Composing the sequence around the cycle: <code>(−1)·(−i)·0·0·(+1)·(+i)·0·0 = 0</code>. The full cycle annihilates to zero — every walk returns the electron to ground state. This is what makes the cycle <em>closed</em>: it has no net effect on the electron's phase. It's the topological version of a conservation law.</p>
+      <p>The two zero pairs are projection operators. They erase the accumulated phase at each bridge crossing, which is what lets the path repeat indefinitely without drift. Without the bridges the phase would accumulate and the cycle would precess; with them, it stays closed.</p>
+      <p>This is the discrete topology of the eigenspaces of the Pauli matrices, packaged as a single-walker circuit.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Keyboard shortcuts</summary>
+    <div class="details-body">
+      <p><code>Space</code> — play/pause<br>
+      <code>S</code> — single step<br>
+      <code>R</code> — reset<br>
+      <code>G</code> — toggle ground signal<br>
+      <code>1, 2, 3</code> — switch to protect, burrow, gather mode</p>
+    </div>
+  </details>
+
+  <div class="footer">
+    Single-file educational widget. Save this HTML, open in any browser. No network calls, no dependencies.
+  </div>
+</div>
+
+<script>
+(function() {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  const nodes = [
+    { label: '−1', op: '180° flip (inversion)', color: '#993c1d', hemi: 'L', x: 120, y: 140 },
+    { label: '−i', op: 'rotate −90°', color: '#ba7517', hemi: 'L', x: 120, y: 300 },
+    { label: '0',  op: 'ground (bridge 1a)',    color: '#888780', hemi: 'B', x: 280, y: 220 },
+    { label: '0',  op: 'ground (bridge 1b)',    color: '#888780', hemi: 'B', x: 340, y: 220 },
+    { label: '+1', op: 'identity',              color: '#185fa5', hemi: 'R', x: 500, y: 140 },
+    { label: '+i', op: 'rotate +90°',           color: '#0f6e56', hemi: 'R', x: 500, y: 300 },
+    { label: '0',  op: 'ground (bridge 2a)',    color: '#888780', hemi: 'B', x: 400, y: 390 },
+    { label: '0',  op: 'ground (bridge 2b)',    color: '#888780', hemi: 'B', x: 220, y: 390 },
+  ];
+
+  let currentNode = 0;
+  let stepCount = 0;
+  let phase = 0;
+  let playing = true;
+  let mode = 'protect';
+  let grounded = false;
+  let groundFlash = 0;
+  let gathered = [];
+  let stepDurationMs = 600;
+  let lastStepTime = performance.now();
+
+  function setMode(m) {
+    mode = m;
+    if (m === 'protect') {
+      currentNode = 0;
+      stepCount = 0;
+      gathered = [];
+      phase = 0;
+    } else if (m === 'burrow') {
+      gathered = [];
+    }
+    document.querySelectorAll('.mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === m);
+    });
+    updatePanel();
+  }
+
+  function step() {
+    if (grounded) return;
+    if (mode === 'protect') {
+      currentNode = 0;
+      return;
+    }
+    currentNode = (currentNode + 1) % nodes.length;
+    stepCount++;
+    if (mode === 'gather' && stepCount > 8) {
+      const n = nodes[currentNode];
+      if (n.hemi === 'L' || n.hemi === 'R') {
+        gathered.push({ color: n.color, angle: Math.random() * Math.PI * 2 });
+        if (gathered.length > 60) gathered.shift();
+      }
+    }
+    updatePanel();
+  }
+
+  function updatePanel() {
+    const n = nodes[currentNode];
+    document.getElementById('curNode').textContent = n.label;
+    document.getElementById('curNode').style.color = n.color;
+    document.getElementById('curOp').textContent = n.op;
+    const cycle = Math.floor(stepCount / 8) + 1;
+    document.getElementById('stepCounter').textContent = `step ${stepCount % 8} of 8 — cycle ${cycle}`;
+
+    const modeTexts = {
+      protect: 'Protect — one shell, electron held safely',
+      burrow: 'Burrow — walking the cycle, reading each node once',
+      gather: 'Gather — accumulating at every hemisphere visit',
+    };
+    document.getElementById('modeText').textContent = modeTexts[mode];
+
+    let explanation = '';
+    if (mode === 'protect') {
+      explanation = 'One electron sits at the −1 node. The shell around it is its only protection — no bridge open, no path to walk. This is the resting state, the single protective shell.';
+    } else if (mode === 'burrow') {
+      if (n.hemi === 'L') {
+        explanation = `On the left hemisphere at ${n.label}. The electron is doing ${n.op}. The left hemisphere holds the negative side of the cycle.`;
+      } else if (n.hemi === 'R') {
+        explanation = `On the right hemisphere at ${n.label}. The electron is doing ${n.op}. The right side mirrors the left across the bridge axis.`;
+      } else {
+        explanation = `At a bridge node (ground). The electron is between hemispheres — momentarily at zero phase. The bridge lets the path cross itself without collision; the zeros project away any accumulated phase, keeping the cycle closed.`;
+      }
+    } else if (mode === 'gather') {
+      explanation = `Cycle ${cycle}, gathered ${gathered.length} items. After the first traversal (burrow phase) the walker enters gather mode: it keeps walking but now accumulates at each hemisphere node. The bridges still ground; the hemispheres now collect.`;
+    }
+    document.getElementById('explainText').textContent = explanation;
+  }
+
+  function drawHemispheres() {
+    ctx.strokeStyle = 'rgba(83, 74, 183, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.ellipse(120, 220, 80, 140, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(500, 220, 80, 140, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.7)';
+    ctx.font = '11px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('left hemisphere', 120, 60);
+    ctx.fillText('right hemisphere', 500, 60);
+    ctx.fillText('bridge 1', 310, 205);
+    ctx.fillText('bridge 2', 310, 415);
+  }
+
+  function drawEdges() {
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      const b = nodes[(i + 1) % nodes.length];
+      const isCurrent = (i === currentNode) && playing && !grounded && mode !== 'protect';
+      const isVisited = (mode !== 'protect') && (stepCount >= 8 || i < currentNode);
+
+      let alpha = 0.2;
+      if (isCurrent) alpha = 0.85;
+      else if (isVisited) alpha = 0.45;
+
+      ctx.strokeStyle = `rgba(83, 74, 183, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+
+      if (isCurrent) {
+        const midX = a.x + (b.x - a.x) * 0.5;
+        const midY = a.y + (b.y - a.y) * 0.5;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const ux = dx / len, uy = dy / len;
+        ctx.fillStyle = 'rgba(83, 74, 183, 0.85)';
+        ctx.beginPath();
+        ctx.moveTo(midX + ux * 8, midY + uy * 8);
+        ctx.lineTo(midX - ux * 4 + uy * 6, midY - uy * 4 - ux * 6);
+        ctx.lineTo(midX - ux * 4 - uy * 6, midY - uy * 4 + ux * 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawNodes() {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const isCurrent = i === currentNode;
+      const isVisited = mode !== 'protect' && (stepCount >= 8 || i <= currentNode);
+
+      const r = isCurrent ? 26 : 20;
+      const fillColor = (isVisited && mode !== 'protect') ? n.color : 'rgba(241, 239, 232, 0.95)';
+      ctx.globalAlpha = (mode === 'protect' && i !== 0) ? 0.32 : 1;
+
+      ctx.fillStyle = fillColor;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.strokeStyle = n.color;
+      ctx.lineWidth = isCurrent ? 3 : 1.5;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.fillStyle = (isVisited && mode !== 'protect') ? '#ffffff' : n.color;
+      ctx.font = `${isCurrent ? '500 ' : ''}${isCurrent ? 16 : 14}px -apple-system, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.label, n.x, n.y);
+      ctx.textBaseline = 'alphabetic';
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawElectron() {
+    const a = nodes[currentNode];
+    const b = nodes[(currentNode + 1) % nodes.length];
+    let ex, ey;
+    if (playing && !grounded && mode !== 'protect') {
+      ex = a.x + (b.x - a.x) * phase;
+      ey = a.y + (b.y - a.y) * phase;
+    } else {
+      ex = a.x;
+      ey = a.y;
+    }
+
+    const pulse = 1 + 0.15 * Math.sin(performance.now() * 0.005);
+    ctx.fillStyle = 'rgba(212, 83, 126, 0.22)';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 14 * pulse, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#993556';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 6, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '500 9px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('e−', ex, ey);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawGathered() {
+    if (mode !== 'gather' || gathered.length === 0) return;
+    const cx = 310, cy = 270;
+    const now = performance.now() * 0.0005;
+    for (let i = 0; i < gathered.length; i++) {
+      const item = gathered[i];
+      const ang = item.angle + now;
+      const r = 50 + (i % 4) * 6;
+      const gx = cx + r * Math.cos(ang);
+      const gy = cy + r * Math.sin(ang);
+      ctx.fillStyle = item.color;
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.arc(gx, gy, 3.5, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.85)';
+    ctx.font = '500 13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`gathered: ${gathered.length}`, cx, cy + 4);
+  }
+
+  function drawGroundFlash() {
+    if (groundFlash > 0) {
+      ctx.fillStyle = `rgba(120, 117, 110, ${groundFlash / 40})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(38, 33, 92, ${groundFlash / 40})`;
+      ctx.font = '500 28px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GROUND', W / 2, H / 2);
+      groundFlash--;
+    }
+  }
+
+  function drawHeader() {
+    ctx.fillStyle = 'rgba(120, 117, 110, 0.85)';
+    ctx.font = '500 13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${mode} mode`, 16, 26);
+
+    if (grounded) {
+      ctx.fillStyle = '#993c1d';
+      ctx.textAlign = 'right';
+      ctx.fillText('● grounded', W - 16, 26);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawHemispheres();
+    drawEdges();
+    drawGathered();
+    drawNodes();
+    drawElectron();
+    drawGroundFlash();
+    drawHeader();
+  }
+
+  function loop(now) {
+    if (playing && !grounded && mode !== 'protect') {
+      const elapsed = now - lastStepTime;
+      phase = Math.min(1, elapsed / stepDurationMs);
+      if (phase >= 1) {
+        step();
+        phase = 0;
+        lastStepTime = now;
+      }
+    } else {
+      lastStepTime = now;
+      phase = 0;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.addEventListener('click', () => setMode(b.dataset.mode));
+  });
+  document.getElementById('btnPlay').onclick = () => {
+    playing = !playing;
+    document.getElementById('btnPlay').textContent = playing ? 'Pause' : 'Play';
+  };
+  document.getElementById('btnStep').onclick = () => {
+    if (mode === 'protect') setMode('burrow');
+    step();
+    phase = 0;
+  };
+  document.getElementById('btnReset').onclick = () => {
+    currentNode = 0;
+    stepCount = 0;
+    gathered = [];
+    phase = 0;
+    grounded = false;
+    document.getElementById('btnGround').textContent = 'Ground signal';
+    setMode('protect');
+  };
+  document.getElementById('btnGround').onclick = () => {
+    grounded = !grounded;
+    groundFlash = grounded ? 40 : 0;
+    document.getElementById('btnGround').textContent = grounded ? 'Resume' : 'Ground signal';
+  };
+  document.getElementById('speed').addEventListener('input', e => {
+    stepDurationMs = +e.target.value;
+    document.getElementById('speedVal').textContent = stepDurationMs + 'ms';
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); document.getElementById('btnPlay').click(); }
+    else if (e.key === 's' || e.key === 'S') document.getElementById('btnStep').click();
+    else if (e.key === 'r' || e.key === 'R') document.getElementById('btnReset').click();
+    else if (e.key === 'g' || e.key === 'G') document.getElementById('btnGround').click();
+    else if (e.key === '1') setMode('protect');
+    else if (e.key === '2') setMode('burrow');
+    else if (e.key === '3') setMode('gather');
+  });
+
+  setMode('protect');
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

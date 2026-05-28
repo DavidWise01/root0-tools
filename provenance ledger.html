@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Provenance Ledger</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface-2: #f1efe8;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(120, 117, 110, 0.18);
+    --border-strong: rgba(120, 117, 110, 0.4);
+    --purple: #534ab7;
+    --coral: #993c1d;
+    --amber: #ba7517;
+    --teal: #0f6e56;
+    --blue: #185fa5;
+    --pink: #993556;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #232321;
+      --surface-2: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(241, 239, 232, 0.12);
+      --border-strong: rgba(241, 239, 232, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 4px; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 24px; }
+  .tabs {
+    display: flex; gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .tab {
+    padding: 10px 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+    font-weight: 500;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .panel-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  textarea, input[type="text"], input[type="search"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+  }
+  textarea { min-height: 120px; font-family: ui-monospace, "SF Mono", monospace; font-size: 13px; }
+  input[type="text"], input[type="search"] { font-size: 14px; }
+  textarea:focus, input:focus { outline: 0.5px solid var(--purple); border-color: var(--purple); }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 12px 0 6px;
+    font-weight: 500;
+  }
+  button {
+    padding: 9px 18px; font-size: 13px;
+    font-family: inherit;
+    background: var(--text); color: var(--bg);
+    border: 0.5px solid var(--text);
+    border-radius: 8px; cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.12s;
+  }
+  button:hover { opacity: 0.85; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border-strong);
+  }
+  button.danger {
+    background: transparent;
+    color: var(--coral);
+    border-color: var(--coral);
+  }
+  .button-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .hash {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    word-break: break-all;
+    background: var(--surface-2);
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+  .entry {
+    border-left: 3px solid var(--purple);
+    background: var(--surface);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .entry-header {
+    display: flex; justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .entry-title {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 0;
+  }
+  .entry-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-family: ui-monospace, monospace;
+  }
+  .entry-content {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 6px 0;
+    max-height: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .entry-actions {
+    display: flex; gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .entry-actions button {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--surface-2);
+    border-radius: 10px;
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+    color: var(--text-secondary);
+    margin-right: 4px;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0;
+    font-family: ui-monospace, monospace;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+  }
+  details {
+    margin-top: 8px;
+  }
+  details summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    list-style: none;
+  }
+  details summary::before { content: "▸ "; }
+  details[open] summary::before { content: "▾ "; }
+  .full-content {
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .lineage-tree {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    background: var(--surface-2);
+    padding: 14px;
+    border-radius: 8px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .verify-result {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .verify-ok {
+    background: rgba(15, 110, 86, 0.1);
+    color: var(--teal);
+    border: 0.5px solid var(--teal);
+  }
+  .verify-fail {
+    background: rgba(153, 60, 29, 0.1);
+    color: var(--coral);
+    border: 0.5px solid var(--coral);
+  }
+  .filter-bar {
+    display: flex; gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .filter-bar input { flex: 1; min-width: 200px; }
+  .principle {
+    background: var(--surface-2);
+    border-left: 3px solid var(--amber);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Provenance Ledger</h1>
+  <p class="subtitle">Personal record of authorship for your own work. Hashes, timestamps, lineage. Local-only, browser-stored, exportable.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="add">Add entry</button>
+    <button class="tab" data-tab="ledger">Ledger</button>
+    <button class="tab" data-tab="lineage">Lineage</button>
+    <button class="tab" data-tab="verify">Verify</button>
+    <button class="tab" data-tab="manage">Export / import</button>
+    <button class="tab" data-tab="ethics">Principles</button>
+  </div>
+
+  <div class="panel active" id="panel-add">
+    <div class="card">
+      <p class="panel-label">New entry</p>
+      <label for="entryTitle">Title</label>
+      <input type="text" id="entryTitle" placeholder="e.g., Reactive Shell Widget v1">
+
+      <label for="entryContent">Content (paste text, code, document, or notes)</label>
+      <textarea id="entryContent" placeholder="The content you want to timestamp and hash."></textarea>
+
+      <label for="entryNotes">Notes (context, intent, what this is — your own words for future you)</label>
+      <textarea id="entryNotes" placeholder="What is this? Why did you make it? What does it draw on?" style="min-height: 70px;"></textarea>
+
+      <label for="entryTags">Tags (comma-separated, e.g., "framework, hamiltonian, draft")</label>
+      <input type="text" id="entryTags" placeholder="framework, hamiltonian, draft">
+
+      <label for="entryParent">Derives from (optional, paste a hash from your ledger)</label>
+      <input type="text" id="entryParent" placeholder="Paste a parent entry's hash, or leave blank for original work">
+
+      <div class="button-row">
+        <button id="btnAdd">Add to ledger</button>
+        <button class="secondary" id="btnClear">Clear form</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="panel-label">What this records</p>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary);">
+        Each entry stores: a SHA-256 hash of your content, a local timestamp, your notes, optional tags, and an optional parent hash if this entry derives from prior work in your ledger. This is your own record. It lives in this browser's local storage. Nothing leaves your machine unless you export it.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-ledger">
+    <div class="stat-grid">
+      <div class="stat">
+        <p class="stat-value" id="statTotal">0</p>
+        <p class="stat-label">Total entries</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statRoots">0</p>
+        <p class="stat-label">Originals (no parent)</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statDerived">0</p>
+        <p class="stat-label">Derived works</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statTags">0</p>
+        <p class="stat-label">Unique tags</p>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <input type="search" id="filterSearch" placeholder="Search title, content, notes, tags...">
+      <button class="secondary" id="btnClearFilter">Clear</button>
+    </div>
+
+    <div id="entryList">
+      <div class="empty">No entries yet. Add your first one in the "Add entry" tab.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-lineage">
+    <div class="card">
+      <p class="panel-label">Lineage tree</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary);">
+        Shows how entries derive from each other. Originals are at the top level; derived works branch from their parents.
+      </p>
+      <div id="lineageTree" class="lineage-tree">No entries yet.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-verify">
+    <div class="card">
+      <p class="panel-label">Verify an entry</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary);">
+        Paste content here to check whether it matches an entry in your ledger. Useful for confirming a copy you've shared elsewhere is bit-identical to what you logged.
+      </p>
+      <label for="verifyContent">Content to verify</label>
+      <textarea id="verifyContent" placeholder="Paste content..."></textarea>
+      <div class="button-row">
+        <button id="btnVerify">Check against ledger</button>
+      </div>
+      <div id="verifyResult"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-manage">
+    <div class="card">
+      <p class="panel-label">Export</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary);">
+        Download your entire ledger as a JSON file. Keep this somewhere safe — your work, your records.
+      </p>
+      <div class="button-row">
+        <button id="btnExport">Export ledger as JSON</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="panel-label">Import</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary);">
+        Load a previously exported ledger file. This will merge with existing entries (skipping duplicates by hash).
+      </p>
+      <input type="file" id="importFile" accept=".json" style="margin-bottom: 8px;">
+      <div class="button-row">
+        <button class="secondary" id="btnImport">Import file</button>
+      </div>
+      <div id="importResult" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="card">
+      <p class="panel-label">Danger zone</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary);">
+        Clear the entire ledger from this browser. Export first if you want to keep your records.
+      </p>
+      <div class="button-row">
+        <button class="danger" id="btnClearAll">Clear entire ledger</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-ethics">
+    <div class="card">
+      <p class="panel-label">What this tool is for</p>
+      <p style="margin: 4px 0 0; font-size: 14px; color: var(--text); line-height: 1.7;">
+        A personal provenance ledger for tracking your own intellectual work. It records what you made and when you logged it, with cryptographic hashes that prove the content hasn't been altered since logging. That's the whole tool.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="panel-label">What this tool is not for</p>
+      <p style="margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+        This isn't a litigation tool. It isn't designed for asserting claims against other parties. It isn't a system for tracking what other people might owe you. Honest provenance is about your relationship to your own work, not about leveraging that relationship against anyone else.
+      </p>
+
+      <p class="panel-label">Why this matters</p>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+        Strong provenance records protect you in legitimate situations: showing you authored something before someone else's claim, demonstrating which version of a draft was current at a given moment, tracking how your own ideas evolved. They don't manufacture grounds for disputes that wouldn't exist otherwise.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="panel-label">Honest principles</p>
+
+      <div class="principle">
+        <strong>Hashes prove content, not creation.</strong> A SHA-256 hash proves a particular bit-string existed at a particular moment when you logged it. It doesn't prove you originated the underlying ideas — only that you recorded a particular formulation of them.
+      </div>
+
+      <div class="principle">
+        <strong>Local timestamps reflect your clock.</strong> Your computer's clock isn't authoritative. For stronger provenance, supplement this with public time-stamping services (OpenTimestamps, blockchain anchoring, or just emailing yourself a copy through a third-party service).
+      </div>
+
+      <div class="principle">
+        <strong>Provenance ≠ priority.</strong> Recording your work first doesn't mean you originated the idea. Independent discovery is common in active fields. Treat this ledger as a record of your trajectory, not a claim against others.
+      </div>
+
+      <div class="principle">
+        <strong>Knowledge over money.</strong> The best use of this tool is helping you track how your own thinking develops. Lineage trees let you see your own intellectual evolution. That's the value of the ledger, not its utility in disputes.
+      </div>
+
+      <div class="principle">
+        <strong>Tools shape behavior.</strong> A tool framed as "track your work" produces different downstream behavior than one framed as "build legal case." This one is the first kind. If your needs change, the design of the tool would need to change too — and that change is a deliberate choice, not a default.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'provenance_ledger_v1';
+let ledger = [];
+
+// SHA-256 using Web Crypto
+async function sha256(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function loadLedger() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    ledger = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    ledger = [];
+  }
+}
+
+function saveLedger() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ledger));
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+}
+
+function shortHash(h) {
+  return h.slice(0, 12) + '…' + h.slice(-6);
+}
+
+async function addEntry() {
+  const title = document.getElementById('entryTitle').value.trim();
+  const content = document.getElementById('entryContent').value;
+  const notes = document.getElementById('entryNotes').value.trim();
+  const tagsRaw = document.getElementById('entryTags').value.trim();
+  const parent = document.getElementById('entryParent').value.trim();
+
+  if (!title) { alert('Title is required.'); return; }
+  if (!content) { alert('Content is required.'); return; }
+
+  const hash = await sha256(content);
+
+  // Check duplicate hash
+  if (ledger.some(e => e.hash === hash)) {
+    if (!confirm('An entry with this exact content already exists. Add anyway?')) return;
+  }
+
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  const entry = {
+    id: crypto.randomUUID(),
+    title,
+    content,
+    notes,
+    tags,
+    hash,
+    parent: parent || null,
+    timestamp: new Date().toISOString(),
+  };
+
+  ledger.push(entry);
+  saveLedger();
+
+  document.getElementById('entryTitle').value = '';
+  document.getElementById('entryContent').value = '';
+  document.getElementById('entryNotes').value = '';
+  document.getElementById('entryTags').value = '';
+  document.getElementById('entryParent').value = '';
+
+  alert(`Entry added.\nHash: ${shortHash(hash)}\nTimestamp: ${fmtDate(entry.timestamp)}`);
+  renderAll();
+}
+
+function renderLedger() {
+  const list = document.getElementById('entryList');
+  const filterText = document.getElementById('filterSearch').value.toLowerCase();
+
+  let filtered = [...ledger].sort((a, b) =>
+    new Date(b.timestamp) - new Date(a.timestamp)
+  );
+
+  if (filterText) {
+    filtered = filtered.filter(e =>
+      e.title.toLowerCase().includes(filterText) ||
+      e.content.toLowerCase().includes(filterText) ||
+      e.notes.toLowerCase().includes(filterText) ||
+      e.tags.some(t => t.toLowerCase().includes(filterText))
+    );
+  }
+
+  if (filtered.length === 0) {
+    if (ledger.length === 0) {
+      list.innerHTML = '<div class="empty">No entries yet. Add your first one in the "Add entry" tab.</div>';
+    } else {
+      list.innerHTML = '<div class="empty">No entries match your filter.</div>';
+    }
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => `
+    <div class="entry">
+      <div class="entry-header">
+        <h3 class="entry-title">${escapeHTML(e.title)}</h3>
+        <span class="entry-meta">${fmtDate(e.timestamp)}</span>
+      </div>
+      <div style="margin: 4px 0;">
+        ${e.tags.map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('')}
+      </div>
+      ${e.notes ? `<p style="font-size: 13px; color: var(--text-secondary); margin: 6px 0;">${escapeHTML(e.notes)}</p>` : ''}
+      <div class="entry-content">${escapeHTML(e.content.slice(0, 200))}${e.content.length > 200 ? '...' : ''}</div>
+      <div class="hash" title="Click to copy" data-hash="${e.hash}">${e.hash}</div>
+      ${e.parent ? `<div style="margin-top: 6px; font-size: 12px; color: var(--text-tertiary);">derives from: <span class="hash" style="display: inline-block; padding: 2px 6px;">${shortHash(e.parent)}</span></div>` : ''}
+      <div class="entry-actions">
+        <button class="secondary" data-action="view" data-id="${e.id}">View full</button>
+        <button class="secondary" data-action="copy-hash" data-hash="${e.hash}">Copy hash</button>
+        <button class="danger" data-action="delete" data-id="${e.id}">Delete</button>
+      </div>
+      <details>
+        <summary>Full content</summary>
+        <div class="full-content">${escapeHTML(e.content)}</div>
+      </details>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-action="copy-hash"]').forEach(btn => {
+    btn.onclick = () => {
+      navigator.clipboard.writeText(btn.dataset.hash);
+      btn.textContent = 'Copied';
+      setTimeout(() => btn.textContent = 'Copy hash', 1500);
+    };
+  });
+
+  list.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const entry = ledger.find(e => e.id === id);
+      if (!entry) return;
+      if (confirm(`Delete "${entry.title}"? This cannot be undone.`)) {
+        ledger = ledger.filter(e => e.id !== id);
+        saveLedger();
+        renderAll();
+      }
+    };
+  });
+}
+
+function renderStats() {
+  document.getElementById('statTotal').textContent = ledger.length;
+  document.getElementById('statRoots').textContent = ledger.filter(e => !e.parent).length;
+  document.getElementById('statDerived').textContent = ledger.filter(e => e.parent).length;
+  const allTags = new Set();
+  ledger.forEach(e => e.tags.forEach(t => allTags.add(t)));
+  document.getElementById('statTags').textContent = allTags.size;
+}
+
+function renderLineage() {
+  const tree = document.getElementById('lineageTree');
+  if (ledger.length === 0) {
+    tree.textContent = 'No entries yet.';
+    return;
+  }
+
+  const byHash = {};
+  ledger.forEach(e => { byHash[e.hash] = e; });
+  const children = {};
+  ledger.forEach(e => {
+    if (e.parent && byHash[e.parent]) {
+      if (!children[e.parent]) children[e.parent] = [];
+      children[e.parent].push(e);
+    }
+  });
+
+  function renderNode(entry, depth) {
+    const indent = '  '.repeat(depth);
+    const marker = depth === 0 ? '●' : '└─';
+    let out = `${indent}${marker} ${entry.title} [${shortHash(entry.hash)}] (${new Date(entry.timestamp).toLocaleDateString()})\n`;
+    const kids = children[entry.hash] || [];
+    kids.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    kids.forEach(k => { out += renderNode(k, depth + 1); });
+    return out;
+  }
+
+  const roots = ledger.filter(e => !e.parent || !byHash[e.parent]);
+  roots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  let output = '';
+  roots.forEach(r => { output += renderNode(r, 0) + '\n'; });
+
+  tree.textContent = output || 'No entries yet.';
+}
+
+async function verifyContent() {
+  const content = document.getElementById('verifyContent').value;
+  const resultDiv = document.getElementById('verifyResult');
+  if (!content) {
+    resultDiv.innerHTML = '';
+    return;
+  }
+  const hash = await sha256(content);
+  const match = ledger.find(e => e.hash === hash);
+  if (match) {
+    resultDiv.innerHTML = `
+      <div class="verify-result verify-ok">
+        <strong>Match found.</strong><br>
+        Entry: ${escapeHTML(match.title)}<br>
+        Logged: ${fmtDate(match.timestamp)}<br>
+        Hash: <span style="font-family: monospace; font-size: 11px;">${match.hash}</span>
+      </div>`;
+  } else {
+    resultDiv.innerHTML = `
+      <div class="verify-result verify-fail">
+        <strong>No match in ledger.</strong><br>
+        Computed hash: <span style="font-family: monospace; font-size: 11px;">${hash}</span><br>
+        This content does not bit-match any entry you've logged.
+      </div>`;
+  }
+}
+
+function exportLedger() {
+  const data = {
+    format: 'provenance_ledger_v1',
+    exported: new Date().toISOString(),
+    entries: ledger,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `provenance_ledger_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importLedger() {
+  const fileInput = document.getElementById('importFile');
+  const file = fileInput.files[0];
+  if (!file) { alert('Choose a file first.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.entries || !Array.isArray(data.entries)) {
+        throw new Error('Invalid format');
+      }
+      const existingHashes = new Set(ledger.map(x => x.hash));
+      let added = 0, skipped = 0;
+      data.entries.forEach(entry => {
+        if (existingHashes.has(entry.hash)) {
+          skipped++;
+        } else {
+          ledger.push(entry);
+          existingHashes.add(entry.hash);
+          added++;
+        }
+      });
+      saveLedger();
+      renderAll();
+      document.getElementById('importResult').innerHTML =
+        `<div class="verify-result verify-ok">Imported ${added} entries. Skipped ${skipped} duplicates.</div>`;
+    } catch (err) {
+      document.getElementById('importResult').innerHTML =
+        `<div class="verify-result verify-fail">Import failed: ${escapeHTML(err.message)}</div>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAll() {
+  if (!confirm('Clear the ENTIRE ledger? This cannot be undone. Export first if you want to keep your records.')) return;
+  if (!confirm('Really clear everything? Last chance.')) return;
+  ledger = [];
+  saveLedger();
+  renderAll();
+}
+
+function renderAll() {
+  renderStats();
+  renderLedger();
+  renderLineage();
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  };
+});
+
+// Wire up buttons
+document.getElementById('btnAdd').onclick = addEntry;
+document.getElementById('btnClear').onclick = () => {
+  ['entryTitle', 'entryContent', 'entryNotes', 'entryTags', 'entryParent'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+};
+document.getElementById('btnVerify').onclick = verifyContent;
+document.getElementById('btnExport').onclick = exportLedger;
+document.getElementById('btnImport').onclick = importLedger;
+document.getElementById('btnClearAll').onclick = clearAll;
+document.getElementById('filterSearch').oninput = renderLedger;
+document.getElementById('btnClearFilter').onclick = () => {
+  document.getElementById('filterSearch').value = '';
+  renderLedger();
+};
+
+loadLedger();
+renderAll();
+</script>
+</body>
+</html>

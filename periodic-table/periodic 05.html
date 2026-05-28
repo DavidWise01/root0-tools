@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10-Level Framework — Dimensions • Time • Gravity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #ffd700;
+    --gold-2: #ffaa00;
+    --space-blue: #3b82f6;
+    --time-yellow: #eab308;
+    --grav-orange: #f97316;
+    --obs-purple: #a855f7;
+    --conscious: #fef3c7;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background: #020208;
+    color: #e6e6ea;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(1200px 800px at 70% -10%, rgba(120,60,255,0.15), transparent 60%),
+      radial-gradient(900px 600px at -10% 30%, rgba(0,180,255,0.12), transparent 50%),
+      radial-gradient(800px 500px at 110% 90%, rgba(255,170,0,0.1), transparent 50%),
+      linear-gradient(180deg, #020208 0%, #050510 100%);
+    z-index:0;
+  }
+  canvas.bg, canvas.fx {
+    position: fixed; inset:0; width:100%; height:100%;
+    z-index:1; pointer-events:none;
+  }
+  canvas.fx { z-index:5; }
+  
+  .app {
+    position: relative; z-index:10;
+    min-height:100vh; display:flex; flex-direction:column;
+    padding: clamp(12px, 2vw, 24px);
+    gap: 18px;
+  }
+  header {
+    text-align:center;
+    padding: 8px 0 4px;
+  }
+  h1 {
+    font-weight: 900;
+    font-size: clamp(22px, 4vw, 42px);
+    letter-spacing: 0.04em;
+    color: var(--gold);
+    text-shadow:
+      0 0 10px rgba(255,215,0,0.9),
+      0 0 24px rgba(255,170,0,0.6),
+      0 0 56px rgba(255,100,0,0.35),
+      0 2px 0 #000;
+    animation: titlePulse 3s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%,100% { filter: brightness(1); text-shadow:0 0 10px rgba(255,215,0,0.9),0 0 24px rgba(255,170,0,0.6),0 0 56px rgba(255,100,0,0.35);}
+    50% { filter: brightness(1.15); text-shadow:0 0 14px rgba(255,215,0,1),0 0 32px rgba(255,170,0,0.8),0 0 70px rgba(255,100,0,0.5);}
+  }
+  .sub {
+    margin-top:6px; font-size:12px; letter-spacing:0.18em; text-transform:uppercase;
+    color: rgba(255,215,0,0.7);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    gap: clamp(14px, 2vw, 22px);
+    align-items:start;
+    max-width: 1600px; width:100%; margin:0 auto; flex:1;
+  }
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 1fr; }
+    .panel { order:2; }
+    .grid-wrap { order:1; }
+  }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(12,12,22,0.85), rgba(6,6,12,0.75));
+    border: 1px solid rgba(255,215,0,0.14);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(12px);
+    box-shadow:
+      0 10px 40px rgba(0,0,0,0.6),
+      inset 0 0 24px rgba(255,215,0,0.035);
+  }
+  .panel h3 {
+    font-size:13px; text-transform:uppercase; letter-spacing:0.14em;
+    color: var(--gold-2); margin-bottom:12px; font-weight:700;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel h3::before {
+    content:''; width:8px; height:8px; border-radius:50%;
+    background: var(--gold); box-shadow:0 0 10px var(--gold);
+    animation: blink 2s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .mapping { display:grid; gap:8px; }
+  .map-row {
+    display:grid; grid-template-columns: 28px 1fr auto; gap:10px; align-items:center;
+    padding:8px 10px; border-radius:10px;
+    background: rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.05);
+    transition: all .3s;
+    font-size:13px;
+  }
+  .map-row:hover { background: rgba(255,215,0,0.06); border-color: rgba(255,215,0,0.2); transform: translateX(2px); }
+  .map-num {
+    width:26px; height:26px; display:grid; place-items:center;
+    border-radius:8px; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px;
+    background: rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1);
+  }
+  .map-row[data-l="1"] .map-num, .map-row[data-l="2"] .map-num, .map-row[data-l="3"] .map-num, .map-row[data-l="4"] .map-num { color:#93c5fd; border-color:rgba(59,130,246,0.4); box-shadow:0 0 10px rgba(59,130,246,0.2) inset; }
+  .map-row[data-l="5"] .map-num { color:#fde68a; border-color:rgba(234,179,8,0.5); }
+  .map-row[data-l="6"] .map-num, .map-row[data-l="7"] .map-num, .map-row[data-l="8"] .map-num { color:#fdba74; border-color:rgba(249,115,22,0.5); }
+  .map-row[data-l="9"] .map-num { color:#d8b4fe; border-color:rgba(168,85,247,0.5); }
+  .map-row[data-l="10"] .map-num { color:#fef3c7; border-color:rgba(251,191,36,0.7); box-shadow:0 0 12px rgba(251,191,36,0.3) inset; }
+
+  .grid-wrap {
+    position:relative; width:100%; max-width:min(92vw, 760px); margin:0 auto;
+    aspect-ratio:1/1;
+  }
+  #grid {
+    display:grid; grid-template-columns:repeat(10,1fr); grid-template-rows:repeat(10,1fr);
+    gap:4px; width:100%; height:100%;
+    padding:10px; border-radius:20px;
+    background: radial-gradient(600px 400px at 50% -10%, rgba(255,215,0,0.08), transparent 60%), rgba(0,0,0,0.4);
+    border:1px solid rgba(255,215,0,0.15);
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 40px rgba(255,215,0,0.03);
+    position:relative;
+  }
+  .cell {
+    position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    border-radius:10px; border:1px solid rgba(255,255,255,0.08);
+    background: rgba(15,15,25,0.7);
+    font-family:'JetBrains Mono', monospace; font-size: clamp(9px, 1.25vw, 12px);
+    color:#c9cedb; user-select:none; cursor:pointer;
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease, background .3s;
+    overflow:hidden;
+  }
+  .cell::before {
+    content:''; position:absolute; inset:0; border-radius:inherit;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 60%);
+    opacity:0.5; pointer-events:none;
+  }
+  .cell:hover:not(.observer):not(.walk) {
+    transform: scale(1.06); z-index:3;
+    border-color: rgba(255,215,0,0.5);
+    box-shadow: 0 0 14px rgba(255,215,0,0.25);
+  }
+  /* Level colors */
+  .cell[data-level="1"], .cell[data-level="2"], .cell[data-level="3"], .cell[data-level="4"] {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(37,99,235,0.22), rgba(8,12,28,0.9));
+    border-color: rgba(59,130,246,0.35); color:#a5c9ff;
+    box-shadow: inset 0 0 14px rgba(59,130,246,0.15), 0 0 0 rgba(0,0,0,0);
+  }
+  .cell[data-level="5"] {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(234,179,8,0.25), rgba(28,22,5,0.9));
+    border-color: rgba(234,179,8,0.45); color:#ffe9a3;
+    box-shadow: inset 0 0 16px rgba(234,179,8,0.18);
+  }
+  .cell[data-level="6"], .cell[data-level="7"], .cell[data-level="8"] {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(249,115,22,0.24), rgba(28,12,5,0.92));
+    border-color: rgba(249,115,22,0.42); color:#ffcaa0;
+    box-shadow: inset 0 0 16px rgba(249,115,22,0.18);
+  }
+  .cell[data-level="9"] {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(168,85,247,0.26), rgba(18,6,28,0.92));
+    border-color: rgba(168,85,247,0.45); color:#e9d5ff;
+    box-shadow: inset 0 0 18px rgba(168,85,247,0.2);
+  }
+  .cell[data-level="10"] {
+    background: radial-gradient(120% 120% at 30% 0%, rgba(255,246,210,0.3), rgba(40,30,5,0.9));
+    border-color: rgba(253,224,71,0.7); color:#fff7d6;
+    box-shadow: inset 0 0 20px rgba(255,215,0,0.25), 0 0 18px rgba(255,215,0,0.12);
+  }
+  .cell.key {
+    font-weight:700; font-size: clamp(10px, 1.4vw, 14px);
+    letter-spacing:0.02em;
+  }
+  .cell.key[data-level="10"] { font-size: clamp(11px,1.6vw,15px); }
+
+  .cell.observer {
+    background:#000 !important; border-color:#a855f7 !important; color:#f3e8ff !important;
+    pointer-events:none; cursor:default;
+    animation: obsPulse 1.8s ease-in-out infinite;
+    box-shadow: 0 0 0 rgba(168,85,247,0), inset 0 0 22px rgba(76,29,149,0.8);
+  }
+  @keyframes obsPulse {
+    0%,100% { box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(168,85,247,0.2), inset 0 0 18px rgba(0,0,0,0.9); }
+    50% { box-shadow: 0 0 22px rgba(0,0,0,1), 0 0 40px rgba(168,85,247,0.6), inset 0 0 28px rgba(30,0,60,0.9); }
+  }
+  .observer .obs-label {
+    display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1;
+  }
+  .observer .obs-top { font-size:9px; opacity:0.65; }
+  .observer .obs-main {
+    font-size:9px; font-weight:800; letter-spacing:0.22em; color:#e9d5ff;
+    text-shadow:0 0 8px rgba(168,85,247,0.9), 0 0 16px rgba(168,85,247,0.6);
+    animation: obsText 1.5s infinite;
+  }
+  @keyframes obsText {0%,100%{opacity:0.75}50%{opacity:1}}
+
+  .cell.walk {
+    z-index:4; transform: scale(1.08);
+    border-color: var(--gold) !important;
+    background: radial-gradient(circle at center, rgba(255,215,0,0.55), rgba(120,70,0,0.35)) !important;
+    color:#1a1200 !important;
+    box-shadow:
+      0 0 18px rgba(255,215,0,0.9),
+      0 0 36px rgba(255,170,0,0.6),
+      inset 0 0 14px rgba(255,255,200,0.9);
+  }
+  .cell.walk::after {
+    content:''; position:absolute; inset:-4px; border-radius:inherit;
+    background: radial-gradient(circle, rgba(255,215,0,0.7), transparent 60%);
+    filter: blur(10px); z-index:-1; animation: trailFade 0.9s forwards;
+  }
+  @keyframes trailFade { from{opacity:1; transform:scale(0.9)} to{opacity:0; transform:scale(1.3)} }
+
+  .cell.bridge-active { animation: bridgeFlash 0.25s ease-in-out 3; }
+  @keyframes bridgeFlash {
+    0%,100% { box-shadow: 0 0 20px rgba(0,229,255,0.2), inset 0 0 10px rgba(0,0,0,0.9); }
+    50% { box-shadow: 0 0 40px rgba(0,229,255,0.9), 0 0 70px rgba(255,215,0,0.7), inset 0 0 20px rgba(0,229,255,0.5); }
+  }
+
+  .controls {
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:14px;
+  }
+  button.ctrl {
+    appearance:none; border:1px solid rgba(255,215,0,0.3); background: linear-gradient(180deg, rgba(30,25,10,0.9), rgba(10,8,4,0.9));
+    color:#ffe9a3; padding:10px 16px; border-radius:12px; font-weight:700; letter-spacing:0.03em;
+    font-size:13px; cursor:pointer; transition: all .2s; backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 0 12px rgba(255,215,0,0.08);
+    display:flex; align-items:center; gap:8px;
+  }
+  button.ctrl:hover { transform: translateY(-1px); border-color:rgba(255,215,0,0.6); box-shadow:0 6px 22px rgba(0,0,0,0.6), 0 0 18px rgba(255,215,0,0.2), inset 0 0 14px rgba(255,215,0,0.12); color:#fff7d6; }
+  button.ctrl:active { transform: translateY(0); }
+  button.ctrl[disabled] { opacity:0.5; cursor:not-allowed; }
+  button.ctrl.primary { background: linear-gradient(180deg, rgba(255,195,40,0.2), rgba(180,110,0,0.2)); border-color:rgba(255,215,0,0.6); color: var(--gold); }
+  button.ctrl .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold); }
+
+  .gravity { display:grid; gap:10px; }
+  .g-row { display:grid; grid-template-columns:22px 1fr 44px; align-items:center; gap:8px; }
+  .g-num { font-family:'JetBrains Mono'; font-size:11px; text-align:right; opacity:0.7; }
+  .g-bar-out { height:18px; background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:8px; overflow:hidden; position:relative; }
+  .g-bar-in { height:100%; width:0%; transition: width .6s cubic-bezier(.2,.8,.2,1); position:relative; }
+  .g-bar-in::after { content:''; position:absolute; inset:0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent); animation: sheen 2.5s linear infinite; }
+  @keyframes sheen { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+  .g-val { font-family:'JetBrains Mono'; font-size:11px; color:#fde68a; text-align:right; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .chip { font-size:11px; padding:5px 9px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); display:flex; align-items:center; gap:6px; }
+  .chip i { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .flashy h1 { text-shadow:0 0 12px #ffd700,0 0 30px #ffaa00,0 0 60px #ff5500,0 0 90px #ff0000, 0 0 120px rgba(255,0,100,0.3); }
+  .flashy .cell { filter: saturate(1.25) brightness(1.05); }
+  .flashy .panel { box-shadow: 0 10px 40px rgba(0,0,0,0.7), 0 0 30px rgba(255,170,0,0.08), inset 0 0 24px rgba(255,215,0,0.06); }
+
+  footer { text-align:center; font-size:11px; opacity:0.55; padding:8px; }
+
+  /* --- SHADOW MODE --- */
+  body.shadow::before {
+    background:
+      radial-gradient(1200px 800px at 70% -10%, rgba(120,0,0,0.22), transparent 60%),
+      radial-gradient(900px 600px at -10% 30%, rgba(80,0,0,0.18), transparent 50%),
+      radial-gradient(800px 500px at 110% 90%, rgba(150,0,0,0.16), transparent 50%),
+      linear-gradient(180deg, #080000 0%, #140000 100%);
+  }
+  body.shadow {
+    --gold: #ff2a2a;
+    --gold-2: #ff5555;
+    --space-blue: #7a1a1a;
+    --time-yellow: #991b1b;
+    --grav-orange: #b91c1c;
+    --obs-purple: #dc2626;
+    --conscious: #fecaca;
+  }
+  body.shadow .sub { color: rgba(255,80,80,0.7); }
+  body.shadow #grid {
+    background: radial-gradient(600px 400px at 50% -10%, rgba(180,0,0,0.12), transparent 60%), rgba(0,0,0,0.6);
+    border-color: rgba(255,0,0,0.25);
+    box-shadow: 0 0 60px rgba(0,0,0,0.9), inset 0 0 40px rgba(255,0,0,0.05);
+  }
+  body.shadow .cell {
+    background: rgba(18,0,0,0.75) !important;
+    border-color: rgba(120,0,0,0.35) !important;
+    color: #ffbcbc !important;
+  }
+  body.shadow .cell[data-level] { box-shadow: inset 0 0 10px rgba(80,0,0,0.3) !important; }
+  body.shadow .panel { border-color: rgba(255,0,0,0.22); box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 24px rgba(255,0,0,0.06); }
+  body.shadow button.ctrl { border-color: rgba(255,0,0,0.3); background: linear-gradient(180deg, rgba(30,5,5,0.9), rgba(10,2,2,0.9)); color:#ffb3b3; }
+  body.shadow button.ctrl:hover { border-color:rgba(255,0,0,0.6); box-shadow:0 6px 22px rgba(0,0,0,0.6), 0 0 18px rgba(255,0,0,0.2), inset 0 0 14px rgba(255,0,0,0.12); color:#ffecec; }
+  body.shadow button.ctrl.primary { background: linear-gradient(180deg, rgba(120,0,0,0.3), rgba(60,0,0,0.25)); border-color: rgba(255,50,50,0.7); }
+  
+  .cell.shadow-bit {
+    background: radial-gradient(120% 120% at 50% 0%, rgba(200,0,0,0.45), rgba(30,0,0,0.95)) !important;
+    border-color: rgba(255,40,40,0.8) !important;
+    color: #ffe4e4 !important;
+    box-shadow: inset 0 0 18px rgba(255,0,0,0.35), 0 0 14px rgba(150,0,0,0.6) !important;
+    animation: shadowPulse 1.6s ease-in-out infinite;
+    z-index: 2;
+    pointer-events: none;
+  }
+  @keyframes shadowPulse {
+    0%,100% { box-shadow: inset 0 0 16px rgba(255,0,0,0.25), 0 0 10px rgba(120,0,0,0.5); }
+    50% { box-shadow: inset 0 0 24px rgba(255,0,0,0.5), 0 0 24px rgba(255,0,0,0.8); }
+  }
+  .shadow-label { display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1; }
+  .shadow-label .s-top { font-size:8px; opacity:0.6; font-family:'JetBrains Mono',monospace; }
+  .shadow-label .s-main { font-size:9px; font-weight:800; letter-spacing:0.14em; color:#ff9a9a; text-shadow:0 0 8px rgba(255,0,0,0.9), 0 0 14px rgba(255,0,0,0.6); }
+  
+  body.shadow .cell.observer, body.shadow .cell.judge {
+    background: #0a0000 !important;
+    border-color: #ff1a1a !important;
+    color: #ffd0d0 !important;
+    animation: judgePulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 rgba(0,0,0,0), inset 0 0 22px rgba(100,0,0,0.9) !important;
+  }
+  @keyframes judgePulse {
+    0%,100% { box-shadow: 0 0 12px rgba(0,0,0,0.9), 0 0 22px rgba(255,0,0,0.25), inset 0 0 18px rgba(50,0,0,0.9); }
+    50% { box-shadow: 0 0 24px rgba(0,0,0,1), 0 0 44px rgba(255,0,0,0.75), inset 0 0 28px rgba(100,0,0,0.95); }
+  }
+  body.shadow .cell.observer .obs-main { color:#ff8080 !important; text-shadow:0 0 8px rgba(255,0,0,0.9), 0 0 16px rgba(255,0,0,0.6) !important; }
+
+  body.shadow .cell.walk {
+    border-color: var(--gold) !important;
+    background: radial-gradient(circle at center, rgba(180,0,0,0.85), rgba(60,0,0,0.5)) !important;
+    color: #fff0f0 !important;
+    box-shadow: 0 0 18px rgba(255,0,0,0.9), 0 0 36px rgba(180,0,0,0.6), inset 0 0 14px rgba(255,150,150,0.8) !important;
+  }
+  body.shadow .cell.walk::after {
+    background: radial-gradient(circle, rgba(200,0,0,0.75), transparent 60%);
+  }
+</style>
+</head>
+<body>
+<canvas class="bg" id="bg"></canvas>
+<canvas class="fx" id="fx"></canvas>
+
+<div class="app">
+  <header>
+    <h1>10-LEVEL FRAMEWORK — Dimensions • Time • Gravity</h1>
+    <div class="sub">100 cells • Hamiltonian walk • Observer bridge</div>
+  </header>
+
+  <div class="layout">
+    <!-- Left Panel -->
+    <aside class="panel">
+      <h3>Dimensional Mapping</h3>
+      <div class="mapping" id="mapping"></div>
+      <div class="legend">
+        <div class="chip"><i style="background:#3b82f6; box-shadow:0 0 8px #3b82f6"></i>1-4 Space</div>
+        <div class="chip"><i style="background:#eab308; box-shadow:0 0 8px #eab308"></i>5 Time</div>
+        <div class="chip"><i style="background:#f97316; box-shadow:0 0 8px #f97316"></i>6-8 Forces</div>
+        <div class="chip"><i style="background:#a855f7; box-shadow:0 0 8px #a855f7"></i>9 Observer</div>
+        <div class="chip"><i style="background:#fde047; box-shadow:0 0 8px #fde047"></i>10 Choice</div>
+      </div>
+    </aside>
+
+    <!-- Center Grid -->
+    <main class="grid-wrap">
+      <div id="grid"></div>
+      <div class="controls">
+        <button class="ctrl primary" id="walkBtn"><span class="dot"></span> Walk 24</button>
+        <button class="ctrl" id="fullBtn">Full 10-Level Cycle</button>
+        <button class="ctrl" id="flashBtn">Toggle Flashy Mode</button>
+        <button class="ctrl" id="shadowBtn" title="8 shadow bits = the path not taken during the 24-walk">Shadow Mode</button>
+      </div>
+    </main>
+
+    <!-- Right Panel -->
+    <aside class="panel">
+      <h3>×2 Gravity Cost</h3>
+      <div class="gravity" id="gravity"></div>
+      <div style="margin-top:14px; font-size:12px; line-height:1.5; opacity:0.8">
+        Each level doubles energetic cost. Level 10 = 512× base. Observer bridge (8.9 → 9.0) incurs zero-point bypass.
+      </div>
+      <div id="shadowInfo" style="display:none; margin-top:12px; padding:10px; border-radius:10px; background:rgba(255,0,0,0.08); border:1px solid rgba(255,0,0,0.3); font-size:11px; line-height:1.5">
+        <strong style="color:#ff6b6b; letter-spacing:0.1em">SHADOW BITS</strong><br>
+        <span style="opacity:0.9">1-3: Antimatter • 4-6: Dark Matter • 7-8: Judges</span><br>
+        <span style="opacity:0.7">8 shadow bits = the path not taken</span>
+      </div>
+    </aside>
+  </div>
+
+  <footer>8.1 → 8.8 Hamiltonian • 8.8 ⇢ 9.1 Plasma Bridge • Cells 8.9 & 9.0 are OBSERVER (non-traversable)</footer>
+</div>
+
+<script>
+(() => {
+  const grid = document.getElementById('grid');
+  const fx = document.getElementById('fx');
+  const fxc = fx.getContext('2d');
+  const bg = document.getElementById('bg');
+  const bgc = bg.getContext('2d');
+
+  // Build grid 10x10
+  const keyPoints = ['8.1','8.8','8.9','9.0','9.1','10.10'];
+  for (let r=1; r<=10; r++) {
+    for (let c=1; c<=10; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      cell.dataset.level = r;
+      let label = (r===9 && c===10) ? '9.0' : `${r}.${c}`;
+      cell.dataset.label = label;
+      const isObs = (r===8 && c===9) || (r===9 && c===10);
+      if (isObs) {
+        cell.classList.add('observer');
+        cell.innerHTML = `<div class="obs-label"><span class="obs-top">${label}</span><span class="obs-main">OBSERVER</span></div>`;
+      } else {
+        cell.innerHTML = `<span>${label}</span>`;
+        cell.addEventListener('click', () => pulseCell(r,c));
+      }
+      if (keyPoints.includes(label)) cell.classList.add('key');
+      grid.appendChild(cell);
+    }
+  }
+  const getCell = (r,c) => grid.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+
+  const shadowBits = [
+    {r:2,c:2,n:1,type:'Antimatter'},
+    {r:3,c:7,n:2,type:'Antimatter'},
+    {r:4,c:4,n:3,type:'Antimatter'},
+    {r:5,c:5,n:4,type:'Dark Matter'},
+    {r:6,c:6,n:5,type:'Dark Matter'},
+    {r:7,c:3,n:6,type:'Dark Matter'},
+    {r:7,c:9,n:7,type:'Judges'},
+    {r:8,c:2,n:8,type:'Judges'},
+  ];
+
+  // Mapping panel
+  const maps = [
+    {n:1, name:'Point', desc:'0D seed'},
+    {n:2, name:'Line', desc:'1D length'},
+    {n:3, name:'Plane', desc:'2D area'},
+    {n:4, name:'Space', desc:'3D volume'},
+    {n:5, name:'Time', desc:'duration'},
+    {n:6, name:'Gravity', desc:'curvature'},
+    {n:7, name:'EM', desc:'charge/light'},
+    {n:8, name:'Strong/Weak', desc:'nuclear'},
+    {n:9, name:'Observer', desc:'measurement'},
+    {n:10, name:'Choice', desc:'consciousness'},
+  ];
+  const mappingEl = document.getElementById('mapping');
+  maps.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    row.dataset.l = m.n;
+    row.innerHTML = `<div class="map-num">${m.n}</div><div><strong>${m.name}</strong></div><div style="opacity:.65;font-size:11px">${m.desc}</div>`;
+    mappingEl.appendChild(row);
+  });
+
+  // Gravity meter
+  const gravEl = document.getElementById('gravity');
+  const gravData = [
+    {n:1,x:'1x',c:'59,130,246'}, {n:2,x:'2x',c:'59,130,246'}, {n:3,x:'4x',c:'59,130,246'}, {n:4,x:'8x',c:'59,130,246'},
+    {n:5,x:'16x',c:'234,179,8'}, {n:6,x:'32x',c:'249,115,22'}, {n:7,x:'64x',c:'249,115,22'}, {n:8,x:'128x',c:'249,115,22'},
+    {n:9,x:'256x',c:'168,85,247'}, {n:10,x:'512x',c:'251,191,36'}
+  ];
+  gravData.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'g-row';
+    row.innerHTML = `<div class="g-num">${g.n}</div><div class="g-bar-out"><div class="g-bar-in" data-g="${g.n}" style="background:linear-gradient(90deg, rgba(${g.c},0.2), rgba(${g.c},0.95)); box-shadow:0 0 12px rgba(${g.c},0.5) inset"></div></div><div class="g-val">${g.x}</div>`;
+    gravEl.appendChild(row);
+  });
+  function setGravity(level) {
+    document.querySelectorAll('.g-bar-in').forEach(b => {
+      const n = +b.dataset.g;
+      const val = Math.pow(2, n-1);
+      const pct = n <= level ? (Math.log2(val+1)/Math.log2(513))*100 : 0;
+      b.style.width = pct + '%';
+    });
+    document.querySelectorAll('.map-row').forEach(r => r.style.outline = '');
+    const mr = document.querySelector(`.map-row[data-l="${level}"]`);
+    if (mr) mr.style.outline = '1px solid rgba(255,215,0,0.4)';
+  }
+  setGravity(1);
+
+  // Background particles
+  let particles = [];
+  let flashy = false;
+  let shadowMode = false;
+  function resize() {
+    bg.width = window.innerWidth; bg.height = window.innerHeight;
+    fx.width = grid.clientWidth; fx.height = grid.clientHeight;
+    fx.style.left = grid.getBoundingClientRect().left + 'px';
+    fx.style.top = grid.getBoundingClientRect().top + 'px';
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function initParticles(count=140) {
+    particles = Array.from({length:count}, () => ({
+      x: Math.random()*bg.width,
+      y: Math.random()*bg.height,
+      r: Math.random()*1.8 + 0.3,
+      s: Math.random()*0.3 + 0.05,
+      o: Math.random()*0.5 + 0.3,
+      t: Math.random()*Math.PI*2
+    }));
+  }
+  initParticles();
+
+  function animateBG() {
+    bgc.clearRect(0,0,bg.width,bg.height);
+    for (const p of particles) {
+      p.t += 0.01; p.y -= p.s; p.x += Math.sin(p.t*0.5)*0.2;
+      if (p.y < -10) { p.y = bg.height+10; p.x = Math.random()*bg.width; }
+      const tw = 0.6 + Math.sin(p.t*2)*0.4;
+      bgc.beginPath();
+      bgc.arc(p.x, p.y, p.r*tw, 0, Math.PI*2);
+      if (shadowMode) {
+        const r = 60 + Math.floor(80*tw);
+        bgc.fillStyle = `rgba(${r},0,${Math.floor(5+15*tw)},${p.o*tw*0.55})`;
+        bgc.shadowColor = 'rgba(150,0,0,0.7)';
+        bgc.shadowBlur = flashy ? 10 : 5;
+      } else {
+        bgc.fillStyle = `rgba(255,${200+Math.floor(30*tw)},100,${p.o*tw})`;
+        bgc.shadowColor = 'rgba(255,200,80,0.8)'; bgc.shadowBlur = flashy ? 12 : 6;
+      }
+      bgc.fill();
+    }
+    bgc.shadowBlur = 0;
+    requestAnimationFrame(animateBG);
+  }
+  animateBG();
+
+  // Helpers
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  function pulseCell(r,c) {
+    const cell = getCell(r,c); if(!cell||cell.classList.contains('observer')) return;
+    cell.classList.add('walk'); setTimeout(()=>cell.classList.remove('walk'), 500);
+    setGravity(r);
+  }
+  function cellCenter(r,c) {
+    const cell = getCell(r,c); const gr = grid.getBoundingClientRect(); const cr = cell.getBoundingClientRect();
+    return { x: cr.left - gr.left + cr.width/2, y: cr.top - gr.top + cr.height/2 };
+  }
+
+  // Hamiltonian 24-step path 8.1 -> 8.8
+  const path24 = [
+    [8,1],[7,1],[6,1],[6,2],[7,2],[8,3],[7,3],[6,4],[7,4],[8,4],
+    [8,5],[7,5],[6,6],[7,6],[8,7],[7,7],[6,8],[7,8],[8,8]
+  ];
+
+  let running = false;
+  async function walk24Core(skipBridge=false) {
+    running = true;
+    document.querySelectorAll('.cell.walk').forEach(c=>c.classList.remove('walk'));
+    fxc.clearRect(0,0,fx.width,fx.height);
+    for (let i=0;i<path24.length;i++) {
+      const [r,c] = path24[i];
+      const cell = getCell(r,c);
+      cell.classList.add('walk');
+      setGravity(r);
+      setTimeout(()=>cell.classList.remove('walk'), 700);
+      if (i>0) {
+        const p1 = cellCenter(path24[i-1][0], path24[i-1][1]);
+        const p2 = cellCenter(r,c);
+        fxc.beginPath(); fxc.moveTo(p1.x,p1.y); fxc.lineTo(p2.x,p2.y);
+        fxc.strokeStyle = shadowMode ? 'rgba(180,0,0,0.85)' : 'rgba(255,215,0,0.7)';
+        fxc.lineWidth = 2; fxc.shadowColor = shadowMode ? '#ff0000' : 'gold'; fxc.shadowBlur=12; fxc.stroke();
+      }
+      await sleep(110);
+    }
+    await sleep(200);
+    if (!skipBridge) await doBridge();
+    running = false;
+  }
+
+  async function doBridge() {
+    const start = cellCenter(8,8);
+    const end = cellCenter(9,1);
+    const obsA = getCell(8,9), obsB = getCell(9,10);
+    obsA.classList.add('bridge-active'); obsB.classList.add('bridge-active');
+    setGravity(9);
+    
+    const t0 = performance.now(); const dur = 900;
+    function frame(now) {
+      const t = Math.min(1, (now - t0)/dur);
+      fxc.clearRect(0,0,fx.width,fx.height);
+      // keep path
+      fxc.globalAlpha = 0.25; fxc.strokeStyle = shadowMode ? 'rgba(150,0,0,0.5)' : 'rgba(255,180,0,0.5)'; fxc.lineWidth=1.5; fxc.shadowBlur=0;
+      fxc.beginPath();
+      for(let i=1;i<path24.length;i++){ const a=cellCenter(path24[i-1][0],path24[i-1][1]); const b=cellCenter(path24[i][0],path24[i][1]); fxc.moveTo(a.x,a.y); fxc.lineTo(b.x,b.y); } fxc.stroke(); fxc.globalAlpha=1;
+      
+      // electric arc
+      for(let k=0;k<3;k++){
+        fxc.beginPath(); fxc.moveTo(start.x,start.y);
+        const segs=14;
+        for(let i=1;i<=segs;i++){
+          const tt=i/segs;
+          const nx = start.x + (end.x-start.x)*tt + (Math.random()-0.5)*24*Math.sin(tt*Math.PI)*(1+ k*0.3);
+          const ny = start.y + (end.y-start.y)*tt + (Math.random()-0.5)*24*Math.sin(tt*Math.PI)*(1+ k*0.3);
+          fxc.lineTo(nx,ny);
+        }
+        fxc.strokeStyle = k===1 ? (shadowMode ? 'rgba(40,0,0,0.95)' : 'rgba(255,255,255,0.95)') : (shadowMode ? 'rgba(200,20,20,0.85)' : 'rgba(255,220,120,0.85)');
+        fxc.lineWidth = k===1?1.5:2.5; fxc.shadowColor = shadowMode ? '#ff0000' : '#ffd700'; fxc.shadowBlur=18; fxc.stroke();
+      }
+      // plasma core
+      fxc.beginPath(); fxc.moveTo(start.x,start.y); fxc.lineTo(end.x,end.y);
+      fxc.strokeStyle = shadowMode ? 'rgba(255,50,50,0.9)' : 'rgba(120,240,255,0.9)'; fxc.lineWidth=1; fxc.shadowColor = shadowMode ? '#ff0000' : '#00e5ff'; fxc.shadowBlur=25; fxc.stroke();
+      
+      // observer glow pulses
+      const pulse = 0.5+0.5*Math.sin(now*0.02);
+      [obsA,obsB].forEach(ob=>{
+        const c = cellCenter(+ob.dataset.r,+ob.dataset.c);
+        const grd = fxc.createRadialGradient(c.x,c.y,0,c.x,c.y,40);
+        grd.addColorStop(0, shadowMode ? `rgba(255,0,0,${0.5*pulse})` : `rgba(168,85,247,${0.5*pulse})`); grd.addColorStop(1,'transparent');
+        fxc.fillStyle=grd; fxc.beginPath(); fxc.arc(c.x,c.y,40,0,Math.PI*2); fxc.fill();
+      });
+
+      if (t<1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    await sleep(dur+50);
+    const land = getCell(9,1); land.classList.add('walk'); setTimeout(()=>land.classList.remove('walk'),900);
+    await sleep(300);
+    fxc.clearRect(0,0,fx.width,fx.height);
+    obsA.classList.remove('bridge-active'); obsB.classList.remove('bridge-active');
+  }
+
+  // Controls
+  const walkBtn = document.getElementById('walkBtn');
+  const fullBtn = document.getElementById('fullBtn');
+  const flashBtn = document.getElementById('flashBtn');
+  const shadowBtn = document.getElementById('shadowBtn');
+
+  walkBtn.onclick = async () => { if(running) return; walkBtn.disabled=true; await walk24Core(false); walkBtn.disabled=false; };
+  
+  fullBtn.onclick = async () => {
+    if(running) return; fullBtn.disabled=true; walkBtn.disabled=true;
+    await walk24Core(true);
+    await doBridge();
+    for (let r=9; r<=10; r++) {
+      setGravity(r);
+      for (let c=1; c<=10; c++) {
+        const cell = getCell(r,c);
+        if (cell.classList.contains('observer')) continue;
+        cell.classList.add('walk');
+        await sleep(45);
+        setTimeout(()=>cell.classList.remove('walk'), 350);
+      }
+      await sleep(120);
+    }
+    const finale = getCell(10,10);
+    finale.classList.add('walk');
+    finale.style.boxShadow = shadowMode ? '0 0 40px #ff0000, 0 0 80px #800000, inset 0 0 30px #ff6666' : '0 0 40px #fff, 0 0 80px gold, inset 0 0 30px white';
+    await sleep(1200);
+    finale.style.boxShadow='';
+    finale.classList.remove('walk');
+    setGravity(10);
+    fullBtn.disabled=false; walkBtn.disabled=false;
+  };
+
+  flashBtn.onclick = () => {
+    flashy = !flashy;
+    document.body.classList.toggle('flashy', flashy);
+    initParticles(flashy ? (shadowMode?220:320) : (shadowMode?100:140));
+    flashBtn.textContent = flashy ? 'Flashy: ON ✨' : 'Toggle Flashy Mode';
+    flashBtn.style.borderColor = flashy ? 'rgba(255,215,0,0.8)' : '';
+  };
+
+  shadowBtn.onclick = () => {
+    shadowMode = !shadowMode;
+    document.body.classList.toggle('shadow', shadowMode);
+    shadowBtn.classList.toggle('primary', shadowMode);
+    shadowBtn.innerHTML = shadowMode ? '<span class="dot" style="background:#ff2a2a;box-shadow:0 0 8px #ff0000"></span> Shadow: ON' : 'Shadow Mode';
+    document.getElementById('shadowInfo').style.display = shadowMode ? 'block' : 'none';
+    
+    // toggle shadow bits
+    shadowBits.forEach(sb => {
+      const cell = getCell(sb.r, sb.c);
+      if (!cell) return;
+      if (shadowMode) {
+        cell.classList.add('shadow-bit');
+        cell.dataset.level = '';
+        cell.innerHTML = `<div class="shadow-label"><span class="s-top">${sb.r}.${sb.c}</span><span class="s-main">SHADOW ${sb.n}</span></div>`;
+        cell.title = `Shadow ${sb.n} — ${sb.type}`;
+      } else {
+        cell.classList.remove('shadow-bit');
+        cell.innerHTML = `<span>${sb.r}.${sb.c}</span>`;
+        cell.title = '';
+        cell.dataset.level = sb.r;
+      }
+    });
+    
+    // toggle judges
+    const judges = [[8,9,'8.9'],[9,10,'9.0']];
+    judges.forEach(([r,c,label]) => {
+      const cell = getCell(r,c);
+      if (shadowMode) {
+        cell.classList.add('judge');
+        cell.innerHTML = `<div class="obs-label"><span class="obs-top">${label}</span><span class="obs-main">👁 JUDGES</span></div>`;
+      } else {
+        cell.classList.remove('judge');
+        cell.innerHTML = `<div class="obs-label"><span class="obs-top">${label}</span><span class="obs-main">OBSERVER</span></div>`;
+      }
+    });
+    
+    initParticles(flashy ? (shadowMode?220:320) : (shadowMode?100:140));
+  };
+
+  // initial demo pulse
+  setTimeout(()=>{ getCell(8,1).classList.add('walk'); setTimeout(()=>getCell(8,1).classList.remove('walk'),800); }, 600);
+})();
+</script>
+</body>
+</html>

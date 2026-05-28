@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3/2/1 Compression — consent gate</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface-2: #f1efe8;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(120, 117, 110, 0.18);
+    --border-strong: rgba(120, 117, 110, 0.4);
+    --purple: #534ab7;
+    --coral: #993c1d;
+    --amber: #ba7517;
+    --teal: #0f6e56;
+    --blue: #185fa5;
+    --pink: #993556;
+    --gray: #888780;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #232321;
+      --surface-2: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(241, 239, 232, 0.12);
+      --border-strong: rgba(241, 239, 232, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 4px; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 20px; }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .panel-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .chooser-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 700px) { .chooser-grid { grid-template-columns: 1fr; } }
+  .chooser {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .chooser-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .chooser-role {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 12px;
+  }
+  .choice-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .choice-btn {
+    padding: 10px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.06s;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .choice-btn:hover { background: var(--surface-2); }
+  .choice-btn.selected-on {
+    background: var(--teal);
+    color: white;
+    border-color: var(--teal);
+  }
+  .choice-btn.selected-off {
+    background: var(--coral);
+    color: white;
+    border-color: var(--coral);
+  }
+  .choice-btn.selected-hold {
+    background: var(--amber);
+    color: white;
+    border-color: var(--amber);
+  }
+  .current-choice {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin: 4px 0 0;
+    font-family: ui-monospace, monospace;
+  }
+  .gate-state {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .gate-value {
+    font-size: 32px;
+    font-weight: 500;
+    margin: 8px 0;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.08em;
+  }
+  .gate-on { color: var(--teal); }
+  .gate-off { color: var(--coral); }
+  .gate-hold { color: var(--amber); }
+  .gate-blocked { color: var(--gray); }
+  .gate-explanation {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+  }
+  .witness-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .witness-log {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 4px;
+  }
+  .witness-entry {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: var(--surface);
+    border-radius: 6px;
+    font-size: 12px;
+    border-left: 2px solid var(--border-strong);
+    font-family: ui-monospace, monospace;
+  }
+  .witness-entry.witness-action { border-left-color: var(--teal); }
+  .witness-entry.witness-block { border-left-color: var(--coral); }
+  .witness-entry.witness-hold { border-left-color: var(--amber); }
+  .witness-meta {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+  .witness-detail {
+    color: var(--text);
+  }
+  .action-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 14px;
+  }
+  button.primary {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--text);
+    color: var(--bg);
+    border: 0.5px solid var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.12s;
+  }
+  button.primary:hover { opacity: 0.85; }
+  button.primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  button.secondary-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .truth-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .truth-table th, .truth-table td {
+    padding: 8px 10px;
+    text-align: center;
+    border: 0.5px solid var(--border);
+  }
+  .truth-table th {
+    background: var(--surface-2);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .truth-result-on { color: var(--teal); font-weight: 500; }
+  .truth-result-off { color: var(--coral); font-weight: 500; }
+  .truth-result-hold { color: var(--amber); font-weight: 500; }
+  .truth-result-block { color: var(--gray); font-style: italic; }
+  details {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    list-style: none;
+  }
+  summary::before { content: "▸ "; color: var(--text-secondary); }
+  details[open] summary::before { content: "▾ "; }
+  .details-body {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .stat {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat-value {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    font-family: ui-monospace, monospace;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin: 2px 0 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>3/2/1 compression</h1>
+  <p class="subtitle">Three choices. Two choosers. One witness. Consent gating with audit trail.</p>
+
+  <div class="card">
+    <p class="panel-label">The two choosers</p>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 14px;">Both must select the same choice for an action to fire. Any disagreement blocks. Hold from either party freezes the gate.</p>
+
+    <div class="chooser-grid">
+      <div class="chooser">
+        <p class="chooser-name">Chooser A — Producer</p>
+        <p class="chooser-role">Initiates the pulse</p>
+        <div class="choice-buttons">
+          <button class="choice-btn" data-chooser="A" data-choice="on">ON</button>
+          <button class="choice-btn" data-chooser="A" data-choice="hold">HOLD</button>
+          <button class="choice-btn" data-chooser="A" data-choice="off">OFF</button>
+        </div>
+        <p class="current-choice">current: <span id="choiceA">—</span></p>
+      </div>
+
+      <div class="chooser">
+        <p class="chooser-name">Chooser B — Consumer</p>
+        <p class="chooser-role">Receives the pulse</p>
+        <div class="choice-buttons">
+          <button class="choice-btn" data-chooser="B" data-choice="on">ON</button>
+          <button class="choice-btn" data-chooser="B" data-choice="hold">HOLD</button>
+          <button class="choice-btn" data-chooser="B" data-choice="off">OFF</button>
+        </div>
+        <p class="current-choice">current: <span id="choiceB">—</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="gate-state">
+    <p class="panel-label">Gate state</p>
+    <p class="gate-value" id="gateValue">— BLOCKED —</p>
+    <p class="gate-explanation" id="gateExplanation">No choices made yet. Both choosers must select.</p>
+
+    <div class="action-row">
+      <button class="primary" id="btnPulse" disabled>Send pulse through gate</button>
+      <button class="secondary-btn" id="btnReset">Reset choices</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <p class="stat-value" id="statPulses">0</p>
+        <p class="stat-label">Pulses sent</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statBlocks">0</p>
+        <p class="stat-label">Blocks</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statHolds">0</p>
+        <p class="stat-label">Holds</p>
+      </div>
+      <div class="stat">
+        <p class="stat-value" id="statAttempts">0</p>
+        <p class="stat-label">Total attempts</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="witness-card">
+    <p class="panel-label">The witness — observer and reporter</p>
+    <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 0;">The third participant. Doesn't vote. Records what happened. The log is the witness's contribution to the system.</p>
+    <div class="witness-log" id="witnessLog">
+      <div style="text-align: center; color: var(--text-tertiary); padding: 20px; font-size: 13px;">No events witnessed yet.</div>
+    </div>
+    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+      <button class="secondary-btn" id="btnExportLog">Export witness log (JSON)</button>
+      <button class="secondary-btn" id="btnClearLog">Clear log</button>
+    </div>
+  </div>
+
+  <details>
+    <summary>The truth table</summary>
+    <div class="details-body">
+      <p>Two choosers, three choices each: 9 combinations total. Only 3 fire (both agree on a non-blocking choice). 6 don't fire (disagreement or hold).</p>
+      <table class="truth-table">
+        <thead>
+          <tr><th>Chooser A</th><th>Chooser B</th><th>Gate result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ON</td><td>ON</td><td class="truth-result-on">FIRE — both agree on</td></tr>
+          <tr><td>ON</td><td>HOLD</td><td class="truth-result-hold">HELD by B</td></tr>
+          <tr><td>ON</td><td>OFF</td><td class="truth-result-block">BLOCKED — disagreement</td></tr>
+          <tr><td>HOLD</td><td>ON</td><td class="truth-result-hold">HELD by A</td></tr>
+          <tr><td>HOLD</td><td>HOLD</td><td class="truth-result-hold">HELD by both</td></tr>
+          <tr><td>HOLD</td><td>OFF</td><td class="truth-result-hold">HELD by A</td></tr>
+          <tr><td>OFF</td><td>ON</td><td class="truth-result-block">BLOCKED — disagreement</td></tr>
+          <tr><td>OFF</td><td>HOLD</td><td class="truth-result-hold">HELD by B</td></tr>
+          <tr><td>OFF</td><td>OFF</td><td class="truth-result-off">CLOSE — both agree off</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 12px;">FIRE (ON+ON) means the gate is open and pulses can pass. CLOSE (OFF+OFF) means the gate is closed and the closure itself is the action. HOLD from either party freezes the gate without firing or closing. Disagreement blocks without consensus.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Why three choices, not two</summary>
+    <div class="details-body">
+      <p>Binary consent (yes/no) forces a winner. Whoever decides last wins, or whoever's vote breaks the tie wins. That dynamic privileges decisiveness over agreement.</p>
+      <p>Ternary consent (on/hold/off) introduces HOLD as a non-decision that's not a refusal. HOLD says "I'm not ready to agree, but I'm not blocking either." It buys time without forcing the gate to either fire or close.</p>
+      <p>This matters in real consent architectures because most disagreements aren't "yes vs no" — they're "I need more time" or "let me think." Binary forces those into refusals, which damages future cooperation. Ternary lets them be what they are: holds.</p>
+      <p>In your framework, this is the cobalt primitive ternary (−1, 0, +1) realized as on/hold/off. The 0 isn't nothing; it's the stay-of-decision that keeps the cycle alive.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Why a witness rather than a third vote</summary>
+    <div class="details-body">
+      <p>A third voter would convert the system from consent (both must agree) to majority (2 of 3). Majority architectures are democratic but they lose the unanimity property. A minority can be overridden.</p>
+      <p>The witness role preserves the unanimity property of two-party consent while adding observability. The witness sees what happened, records it, makes the audit trail available. The witness has no power to override the choosers' decisions.</p>
+      <p>This maps to T133 symmetric attribution in your framework: the third party who keeps the record of who did what. Joint authorship requires a witness who can attest that both parties contributed. The witness is the persistent memory of the system.</p>
+      <p>In real architectures, the witness role corresponds to logging, auditing, notarization. The witness doesn't decide; they document. Their contribution is observability.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Compression — why 3/2/1</summary>
+    <div class="details-body">
+      <p>3 choices × 2 choosers × 1 witness = 6 entities total. But the decision space isn't 6; it's 9 (3×3 choice combinations). The witness doesn't expand the decision space — they observe it.</p>
+      <p>Of the 9 combinations, only 3 are actionable (both agree on the same choice): FIRE, HOLD-symmetric, CLOSE. The other 6 are partial states (one HOLD, asymmetric disagreement). The system compresses 9 possibilities into 3 actions plus an explicit "wait" state for the other 6.</p>
+      <p>The compression is real: you don't need separate state machines for each combination because the witness handles them all uniformly. They all get logged the same way. Only the consequences differ.</p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function() {
+  let choiceA = null;
+  let choiceB = null;
+  let log = [];
+  let stats = { pulses: 0, blocks: 0, holds: 0, attempts: 0 };
+
+  function evaluateGate() {
+    if (choiceA === null || choiceB === null) {
+      return { state: 'pending', reason: 'Both choosers must select.' };
+    }
+    if (choiceA === 'hold' || choiceB === 'hold') {
+      if (choiceA === 'hold' && choiceB === 'hold') {
+        return { state: 'hold', reason: 'Both choosers holding. Gate frozen until at least one moves.' };
+      }
+      const holder = choiceA === 'hold' ? 'A' : 'B';
+      return { state: 'hold', reason: `Chooser ${holder} is holding. Gate frozen.` };
+    }
+    if (choiceA === choiceB) {
+      if (choiceA === 'on') {
+        return { state: 'fire', reason: 'Both choosers agree ON. Gate open. Pulse can fire.' };
+      } else {
+        return { state: 'close', reason: 'Both choosers agree OFF. Gate closed. Closure is the action.' };
+      }
+    }
+    return { state: 'block', reason: `Disagreement: A=${choiceA}, B=${choiceB}. Gate blocked. No action.` };
+  }
+
+  function updateGateDisplay() {
+    const result = evaluateGate();
+    const el = document.getElementById('gateValue');
+    const exp = document.getElementById('gateExplanation');
+    const btn = document.getElementById('btnPulse');
+
+    el.className = 'gate-value';
+    if (result.state === 'fire') {
+      el.textContent = '— OPEN —';
+      el.classList.add('gate-on');
+      btn.disabled = false;
+      btn.textContent = 'Send pulse through gate';
+    } else if (result.state === 'close') {
+      el.textContent = '— CLOSED —';
+      el.classList.add('gate-off');
+      btn.disabled = false;
+      btn.textContent = 'Confirm closure';
+    } else if (result.state === 'hold') {
+      el.textContent = '— HELD —';
+      el.classList.add('gate-hold');
+      btn.disabled = true;
+    } else if (result.state === 'block') {
+      el.textContent = '— BLOCKED —';
+      el.classList.add('gate-blocked');
+      btn.disabled = true;
+    } else {
+      el.textContent = '— PENDING —';
+      el.classList.add('gate-blocked');
+      btn.disabled = true;
+    }
+
+    exp.textContent = result.reason;
+  }
+
+  function witnessLog(action, detail, type = 'neutral') {
+    const ts = new Date().toLocaleTimeString();
+    log.unshift({
+      ts,
+      action,
+      detail,
+      type,
+      timestamp: Date.now(),
+      choiceA,
+      choiceB,
+    });
+    if (log.length > 100) log.pop();
+    renderLog();
+  }
+
+  function renderLog() {
+    const container = document.getElementById('witnessLog');
+    if (log.length === 0) {
+      container.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 20px; font-size: 13px;">No events witnessed yet.</div>';
+      return;
+    }
+    container.innerHTML = log.map(entry => {
+      const cls = entry.type === 'action' ? 'witness-action' :
+                  entry.type === 'block' ? 'witness-block' :
+                  entry.type === 'hold' ? 'witness-hold' : '';
+      return `
+        <div class="witness-entry ${cls}">
+          <div class="witness-meta">${entry.ts} · A=${entry.choiceA ?? '—'}, B=${entry.choiceB ?? '—'}</div>
+          <div class="witness-detail"><strong>${escapeHTML(entry.action)}</strong> — ${escapeHTML(entry.detail)}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function updateStatsDisplay() {
+    document.getElementById('statPulses').textContent = stats.pulses;
+    document.getElementById('statBlocks').textContent = stats.blocks;
+    document.getElementById('statHolds').textContent = stats.holds;
+    document.getElementById('statAttempts').textContent = stats.attempts;
+  }
+
+  // Wire up choice buttons
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    btn.onclick = () => {
+      const chooser = btn.dataset.chooser;
+      const choice = btn.dataset.choice;
+
+      // Clear previous selection in this chooser's group
+      document.querySelectorAll(`.choice-btn[data-chooser="${chooser}"]`).forEach(b => {
+        b.classList.remove('selected-on', 'selected-off', 'selected-hold');
+      });
+
+      // Mark current
+      btn.classList.add(`selected-${choice}`);
+
+      if (chooser === 'A') choiceA = choice;
+      else choiceB = choice;
+
+      document.getElementById('choice' + chooser).textContent = choice.toUpperCase();
+      witnessLog(`Chooser ${chooser} selected`, choice.toUpperCase(), 'neutral');
+
+      const result = evaluateGate();
+      if (result.state === 'hold' && (choiceA !== null && choiceB !== null)) {
+        stats.holds++;
+        updateStatsDisplay();
+      } else if (result.state === 'block') {
+        stats.blocks++;
+        witnessLog('Gate blocked', result.reason, 'block');
+        updateStatsDisplay();
+      }
+      updateGateDisplay();
+    };
+  });
+
+  document.getElementById('btnPulse').onclick = () => {
+    const result = evaluateGate();
+    if (result.state === 'fire') {
+      stats.pulses++;
+      stats.attempts++;
+      witnessLog('PULSE FIRED', 'Both choosers consented ON. Action executed.', 'action');
+    } else if (result.state === 'close') {
+      stats.attempts++;
+      witnessLog('GATE CLOSED', 'Both choosers consented OFF. Closure confirmed as action.', 'action');
+    }
+    updateStatsDisplay();
+  };
+
+  document.getElementById('btnReset').onclick = () => {
+    choiceA = null;
+    choiceB = null;
+    document.querySelectorAll('.choice-btn').forEach(b => {
+      b.classList.remove('selected-on', 'selected-off', 'selected-hold');
+    });
+    document.getElementById('choiceA').textContent = '—';
+    document.getElementById('choiceB').textContent = '—';
+    witnessLog('Reset', 'Both choices cleared.', 'neutral');
+    updateGateDisplay();
+  };
+
+  document.getElementById('btnClearLog').onclick = () => {
+    if (!confirm('Clear the witness log? This cannot be undone.')) return;
+    log = [];
+    renderLog();
+  };
+
+  document.getElementById('btnExportLog').onclick = () => {
+    const data = {
+      format: 'witness_log_3_2_1',
+      exported: new Date().toISOString(),
+      stats,
+      log,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `witness_log_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  updateGateDisplay();
+  updateStatsDisplay();
+})();
+</script>
+</body>
+</html>

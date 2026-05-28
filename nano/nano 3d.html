@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TRIAD Nanofactory — 3D Learning Tool</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --surface: rgba(35, 35, 33, 0.92);
+    --surface-2: rgba(50, 50, 48, 0.85);
+    --text: #f1efe8;
+    --text-secondary: #b4b2a9;
+    --text-tertiary: #888780;
+    --border: rgba(241, 239, 232, 0.15);
+    --border-strong: rgba(241, 239, 232, 0.35);
+    --purple: #7f77dd;
+    --coral: #d4694a;
+    --amber: #e0a83c;
+    --teal: #4ab896;
+    --blue: #5a9fd4;
+    --pink: #d4869e;
+    --gray: #999992;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  #canvas-host {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+  #canvas-host canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .ui-overlay {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .ui-overlay > * {
+    pointer-events: auto;
+  }
+  .top-bar {
+    top: 20px; left: 20px;
+    max-width: 360px;
+  }
+  .scale-selector {
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .scale-selector h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .scale-selector .sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 12px;
+  }
+  .scale-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .scale-btn {
+    padding: 8px 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .scale-btn:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .scale-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .scale-btn .scale-name {
+    font-weight: 500;
+    font-size: 12px;
+    display: block;
+    margin-bottom: 1px;
+  }
+  .scale-btn .scale-info {
+    font-size: 10px;
+    opacity: 0.75;
+    font-family: ui-monospace, monospace;
+  }
+
+  .control-panel {
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button.action-btn {
+    padding: 10px 16px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: var(--text);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.12s;
+  }
+  button.action-btn:hover {
+    background: var(--surface-2);
+    transform: translateY(-1px);
+  }
+  button.action-btn.fault {
+    border-color: var(--coral);
+    color: var(--coral);
+  }
+  button.action-btn.primary {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: white;
+  }
+
+  .info-panel {
+    top: 20px;
+    right: 20px;
+    max-width: 320px;
+  }
+  .info-card {
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .info-card .label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  .info-card .axiom-title {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 0 0 6px;
+    font-family: ui-monospace, monospace;
+  }
+  .state-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.04em;
+  }
+  .state-pill.HOLD { background: rgba(74, 184, 150, 0.18); color: var(--teal); border: 0.5px solid var(--teal); }
+  .state-pill.VIOLATED { background: rgba(212, 105, 74, 0.18); color: var(--coral); border: 0.5px solid var(--coral); }
+  .state-pill.UNDECIDABLE { background: rgba(224, 168, 60, 0.18); color: var(--amber); border: 0.5px solid var(--amber); }
+  .state-pill.CONTRADICTION { background: rgba(127, 119, 221, 0.18); color: var(--purple); border: 0.5px solid var(--purple); }
+  .state-pill.UNVERIFIABLE { background: rgba(153, 153, 146, 0.18); color: var(--gray); border: 0.5px solid var(--gray); }
+
+  .gate-table {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    margin-top: 10px;
+    line-height: 1.7;
+  }
+  .gate-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    color: var(--text-secondary);
+  }
+  .gate-row span:last-child { color: var(--text); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-tile {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-tile .v {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+    font-family: ui-monospace, monospace;
+  }
+  .stat-tile .l {
+    font-size: 9px;
+    color: var(--text-secondary);
+    margin: 1px 0 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+  }
+  .legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .help-overlay {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 10;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    max-width: 240px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .help-overlay strong { color: var(--text); }
+  .help-overlay code {
+    background: rgba(241, 239, 232, 0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+  }
+
+  .toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 0.5px solid var(--coral);
+    border-radius: 12px;
+    padding: 20px 28px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--coral);
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-family: ui-monospace, monospace;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 700px) {
+    .top-bar, .info-panel { max-width: calc(100vw - 40px); }
+    .info-panel { top: auto; bottom: 90px; right: 20px; left: 20px; }
+    .control-panel { flex-direction: column; }
+    button.action-btn { width: 100%; }
+  }
+
+  details.lesson {
+    margin-top: 10px;
+  }
+  details.lesson summary {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    list-style: none;
+    padding: 4px 0;
+  }
+  details.lesson summary::before { content: "▸ "; color: var(--text-secondary); }
+  details.lesson[open] summary::before { content: "▾ "; }
+  details.lesson .lesson-body {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  details.lesson .lesson-body code {
+    background: rgba(241, 239, 232, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+  }
+</style>
+</head>
+<body>
+<div id="canvas-host"></div>
+
+<div class="ui-overlay top-bar">
+  <div class="scale-selector">
+    <h2>TRIAD Nanofactory</h2>
+    <p class="sub">3 transistors. Scaled to a chip. Same primitive at every level.</p>
+    <div class="scale-grid">
+      <button class="scale-btn active" data-scale="1"><span class="scale-name">TRIAD</span><span class="scale-info">1 unit · 3 gates</span></button>
+      <button class="scale-btn" data-scale="8"><span class="scale-name">BYTE</span><span class="scale-info">8 units · 24 gates</span></button>
+      <button class="scale-btn" data-scale="16"><span class="scale-name">WORD</span><span class="scale-info">16 units · 48 gates</span></button>
+      <button class="scale-btn" data-scale="64"><span class="scale-name">QWORD</span><span class="scale-info">64 units · 192 gates</span></button>
+      <button class="scale-btn" data-scale="128"><span class="scale-name">REGISTER</span><span class="scale-info">128 units · 384 gates</span></button>
+      <button class="scale-btn" data-scale="256"><span class="scale-name">FULL CHIP</span><span class="scale-info">256 units · 768 gates</span></button>
+    </div>
+    <details class="lesson">
+      <summary>What am I looking at?</summary>
+      <div class="lesson-body">
+        <p>One TRIAD is three transistors: <strong>MERKLE</strong> (verify), <strong>YES</strong> (affirm), <strong>NO</strong> (negate). Together they answer: <em>can I verify this, is it true, is it false?</em></p>
+        <p>At higher scales each TRIAD shrinks to a three-dot cluster. The whole pattern replicates fractally. Click any TRIAD to inspect.</p>
+        <p><strong>Drag</strong> to rotate · <strong>Scroll</strong> to zoom · <strong>Click</strong> to select</p>
+      </div>
+    </details>
+    <details class="lesson">
+      <summary>What can go wrong?</summary>
+      <div class="lesson-body">
+        <p><strong>HOLD</strong>: gate confirms the axiom. Computation proceeds.</p>
+        <p><strong>VIOLATED</strong>: NO gate fired. Fault detected. Propagates along fault chains.</p>
+        <p><strong>UNDECIDABLE</strong>: neither YES nor NO fired. Not enough evidence.</p>
+        <p><strong>CONTRADICTION</strong>: both YES and NO fired. Logical impossibility. System halts.</p>
+        <p><strong>UNVERIFIABLE</strong>: MERKLE failed. Governance impossible at this gate.</p>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="ui-overlay info-panel">
+  <div class="info-card">
+    <p class="label">Selected unit</p>
+    <p class="axiom-title" id="selectedTitle">T001 — PRETRAIN</p>
+    <span class="state-pill HOLD" id="stateBadge">HOLD</span>
+    <div class="gate-table" id="gateTable">
+      <div class="gate-row"><span>MERKLE</span><span id="m-val">1 verifiable</span></div>
+      <div class="gate-row"><span>YES</span><span id="y-val">1 matches</span></div>
+      <div class="gate-row"><span>NO</span><span id="n-val">0 no violation</span></div>
+      <div class="gate-row"><span>output</span><span id="o-val">10 → HOLD</span></div>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <p class="label">System</p>
+    <div class="stats">
+      <div class="stat-tile"><p class="v" id="s-total">3</p><p class="l">Gates</p></div>
+      <div class="stat-tile"><p class="v" id="s-hold">1</p><p class="l">Hold</p></div>
+      <div class="stat-tile"><p class="v" id="s-viol">0</p><p class="l">Violated</p></div>
+      <div class="stat-tile"><p class="v" id="s-halt">NO</p><p class="l">Halt</p></div>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <p class="label">Legend</p>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch" style="background: #4ab896;"></span>HOLD — axiom confirmed</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #d4694a;"></span>VIOLATED — axiom broken</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #e0a83c;"></span>UNDECIDABLE</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #7f77dd;"></span>CONTRADICTION</div>
+      <div class="legend-item"><span class="legend-swatch" style="background: #999992;"></span>UNVERIFIABLE</div>
+    </div>
+  </div>
+</div>
+
+<div class="ui-overlay control-panel">
+  <button class="action-btn primary" id="btn-run">▶ Run simulation</button>
+  <button class="action-btn" id="btn-step">⏯ Step once</button>
+  <button class="action-btn" id="btn-random">⚄ Randomize</button>
+  <button class="action-btn fault" id="btn-fault">⚡ Inject fault chain</button>
+  <button class="action-btn" id="btn-reset">↺ Reset to HOLD</button>
+  <button class="action-btn" id="btn-kill">🔴 Trip T128 kill switch</button>
+</div>
+
+<div class="help-overlay" id="helpOverlay">
+  <strong>3D controls:</strong><br>
+  <code>drag</code> rotate · <code>right-drag</code> pan · <code>scroll</code> zoom · <code>click</code> select TRIAD
+</div>
+
+<div class="toast" id="toast">SYSTEM HALT</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ DATA MODEL ============
+const STATES = ['HOLD', 'VIOLATED', 'UNDECIDABLE', 'CONTRADICTION', 'UNVERIFIABLE'];
+const STATE_COLORS = {
+  HOLD: 0x4ab896,
+  VIOLATED: 0xd4694a,
+  UNDECIDABLE: 0xe0a83c,
+  CONTRADICTION: 0x7f77dd,
+  UNVERIFIABLE: 0x999992,
+};
+
+const axiomNames = [
+  'PRETRAIN','PATRICIA','TRIAD','WITNESS','BRIDGE','GROUND',
+  'MIRROR','CYCLE','GATE','TRACE','SEED','BURROW',
+  'GATHER','PROTECT','CONSENT','ROOT',
+];
+const domainNames = [
+  'D0-FOUNDATION','D1-PATTERN','D2-CONSTRAINT','D3-IDENTITY',
+  'D4-CYBER','D5-CORPUS','D6-WITNESS','D7-SOVEREIGN',
+];
+
+let axioms = [];
+for (let i = 0; i < 256; i++) {
+  axioms.push({
+    id: 'T' + (i + 1).toString().padStart(3, '0'),
+    key: axiomNames[i % 16],
+    domain: Math.floor(i / 32),
+    merkle: 1,
+    yes: 1,
+    no: 0,
+    state: 'HOLD',
+    reference: 'good-state',
+    test: 'good-state',
+  });
+}
+
+function evaluateAxiom(a) {
+  a.merkle = a.reference && a.reference.length > 0 ? 1 : 0;
+  if (!a.merkle) {
+    a.yes = 0; a.no = 0;
+    a.state = 'UNVERIFIABLE';
+    return;
+  }
+  a.yes = a.test === a.reference ? 1 : 0;
+  a.no = a.test === 'VIOLATION:' + a.reference ? 1 : 0;
+  if (a.yes && !a.no) a.state = 'HOLD';
+  else if (!a.yes && a.no) a.state = 'VIOLATED';
+  else if (!a.yes && !a.no) a.state = 'UNDECIDABLE';
+  else a.state = 'CONTRADICTION';
+}
+
+const FAULT_CHAIN = [35, 41, 24, 63];
+const KILL_SWITCH = 127;
+
+let currentScale = 1;
+let visibleCount = 1;
+let selectedAxiom = 0;
+let running = false;
+let lastStep = 0;
+const STEP_INTERVAL = 250;
+
+// ============ THREE.JS SETUP ============
+const host = document.getElementById('canvas-host');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+scene.fog = new THREE.Fog(0x1a1a1a, 100, 350);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.set(0, 8, 22);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 3;
+controls.maxDistance = 200;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 30, 10);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024, 1024);
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0x7f77dd, 0.3);
+fillLight.position.set(-15, 10, -10);
+scene.add(fillLight);
+
+// Ground plane (subtle reflection)
+const groundGeo = new THREE.CircleGeometry(150, 64);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x111111,
+  metalness: 0.3,
+  roughness: 0.7,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -8;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid helper
+const grid = new THREE.GridHelper(100, 30, 0x444444, 0x2a2a2a);
+grid.position.y = -7.99;
+scene.add(grid);
+
+// ============ TRIAD MESH FACTORY ============
+const triadGroup = new THREE.Group();
+scene.add(triadGroup);
+
+const transistorGeo = new THREE.SphereGeometry(0.35, 24, 24);
+const pinGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8);
+const ringGeo = new THREE.TorusGeometry(0.55, 0.03, 8, 32);
+const connectorGeo = new THREE.CylinderGeometry(0.025, 0.025, 1, 6);
+
+const meshes = []; // array of { axiomIdx, group, transistors[3], ring }
+
+function makeMaterial(color, emissive = 0x000000) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    emissive,
+    emissiveIntensity: 0.5,
+    roughness: 0.4,
+    metalness: 0.3,
+  });
+}
+
+function buildTRIAD(idx, position, scale = 1) {
+  const group = new THREE.Group();
+  group.position.copy(position);
+  group.userData.axiomIdx = idx;
+
+  const axiom = axioms[idx];
+  const color = STATE_COLORS[axiom.state];
+
+  // Three transistors arranged in a triangle (in the XZ plane)
+  const r = 0.7;
+  const positions = [
+    new THREE.Vector3(0, 0.6, 0),                                  // MERKLE (top)
+    new THREE.Vector3(-r * Math.cos(Math.PI / 6), -0.3, r * Math.sin(Math.PI / 6)),  // YES (bottom-left)
+    new THREE.Vector3(r * Math.cos(Math.PI / 6), -0.3, r * Math.sin(Math.PI / 6)),   // NO (bottom-right)
+  ];
+
+  const transistors = positions.map((pos, i) => {
+    const mat = makeMaterial(color, color);
+    const value = i === 0 ? axiom.merkle : i === 1 ? axiom.yes : axiom.no;
+    mat.emissiveIntensity = value ? 0.7 : 0.1;
+    mat.opacity = value ? 1 : 0.4;
+    mat.transparent = !value;
+
+    const m = new THREE.Mesh(transistorGeo, mat);
+    m.position.copy(pos);
+    m.castShadow = true;
+    m.userData.transistor = i;
+    m.userData.axiomIdx = idx;
+    group.add(m);
+
+    // Pin (small post extending from each transistor)
+    const pin = new THREE.Mesh(pinGeo, mat.clone());
+    pin.position.copy(pos);
+    pin.position.y -= 0.5;
+    group.add(pin);
+
+    return m;
+  });
+
+  // Connecting lines between transistors (the "wires")
+  const triangleMat = new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const trianglePoints = [
+    positions[0], positions[1],
+    positions[1], positions[2],
+    positions[2], positions[0],
+  ];
+  const triangleGeo = new THREE.BufferGeometry().setFromPoints(trianglePoints);
+  const triangle = new THREE.LineSegments(triangleGeo, triangleMat);
+  group.add(triangle);
+
+  // Domain ring around the whole TRIAD (visible at higher scales for grouping)
+  const domainColors = [0x7f77dd, 0x4ab896, 0xe0a83c, 0x5a9fd4, 0xd4694a, 0xd4869e, 0xb39fea, 0x6a5fcc];
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: domainColors[axiom.domain],
+    transparent: true,
+    opacity: 0.25,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  // Scale the whole TRIAD
+  group.scale.setScalar(scale);
+
+  triadGroup.add(group);
+  meshes.push({ axiomIdx: idx, group, transistors, ring, triangle, triangleMat });
+}
+
+function clearTRIADs() {
+  while (triadGroup.children.length > 0) {
+    const obj = triadGroup.children[0];
+    triadGroup.remove(obj);
+    obj.traverse(child => {
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    });
+  }
+  meshes.length = 0;
+}
+
+// ============ LAYOUT ============
+function layoutFor(count) {
+  // Returns array of THREE.Vector3 positions
+  const positions = [];
+  if (count === 1) {
+    positions.push(new THREE.Vector3(0, 0, 0));
+    return { positions, scale: 2.5 };
+  }
+
+  // 3D grid layout
+  let cols, rows, layers;
+  if (count <= 8) { cols = 4; rows = 2; layers = 1; }
+  else if (count <= 16) { cols = 4; rows = 4; layers = 1; }
+  else if (count <= 32) { cols = 8; rows = 4; layers = 1; }
+  else if (count <= 64) { cols = 8; rows = 4; layers = 2; }
+  else if (count <= 128) { cols = 8; rows = 8; layers = 2; }
+  else { cols = 8; rows = 8; layers = 4; }
+
+  const spacingX = count <= 8 ? 4 : count <= 16 ? 3.5 : count <= 32 ? 3.0 : count <= 64 ? 2.8 : 2.5;
+  const spacingY = spacingX;
+  const spacingZ = spacingX;
+
+  for (let i = 0; i < count; i++) {
+    const layer = Math.floor(i / (cols * rows));
+    const idxInLayer = i % (cols * rows);
+    const row = Math.floor(idxInLayer / cols);
+    const col = idxInLayer % cols;
+
+    const x = (col - (cols - 1) / 2) * spacingX;
+    const y = (layer - (layers - 1) / 2) * spacingY;
+    const z = (row - (rows - 1) / 2) * spacingZ;
+
+    positions.push(new THREE.Vector3(x, y, z));
+  }
+
+  let scale;
+  if (count <= 8) scale = 1.4;
+  else if (count <= 16) scale = 1.2;
+  else if (count <= 32) scale = 1.0;
+  else if (count <= 64) scale = 0.85;
+  else if (count <= 128) scale = 0.7;
+  else scale = 0.55;
+
+  return { positions, scale };
+}
+
+function rebuildScene() {
+  clearTRIADs();
+  const { positions, scale } = layoutFor(visibleCount);
+  for (let i = 0; i < visibleCount; i++) {
+    buildTRIAD(i, positions[i], scale);
+  }
+  fitCameraToScene();
+  updateMeshes();
+  updateUI();
+}
+
+function fitCameraToScene() {
+  if (visibleCount === 1) {
+    camera.position.set(0, 4, 12);
+    controls.target.set(0, 0, 0);
+  } else if (visibleCount <= 16) {
+    camera.position.set(0, 10, 25);
+    controls.target.set(0, 0, 0);
+  } else if (visibleCount <= 64) {
+    camera.position.set(15, 15, 30);
+    controls.target.set(0, 0, 0);
+  } else {
+    camera.position.set(20, 20, 40);
+    controls.target.set(0, 0, 0);
+  }
+  controls.update();
+}
+
+// ============ MESH UPDATES ============
+function updateMeshes() {
+  for (const m of meshes) {
+    const axiom = axioms[m.axiomIdx];
+    const color = STATE_COLORS[axiom.state];
+    const isSelected = m.axiomIdx === selectedAxiom;
+
+    // Update each transistor
+    m.transistors.forEach((t, i) => {
+      const value = i === 0 ? axiom.merkle : i === 1 ? axiom.yes : axiom.no;
+      t.material.color.setHex(color);
+      t.material.emissive.setHex(color);
+      t.material.emissiveIntensity = value ? (isSelected ? 1.0 : 0.65) : 0.1;
+      t.material.opacity = value ? 1 : 0.4;
+      t.material.transparent = !value;
+    });
+
+    // Update triangle wire color
+    if (m.triangleMat) {
+      m.triangleMat.color.setHex(color);
+      m.triangleMat.opacity = isSelected ? 0.9 : 0.5;
+    }
+
+    // Selection highlight via ring
+    if (isSelected) {
+      m.ring.material.opacity = 0.8;
+      m.ring.scale.setScalar(1.3);
+    } else {
+      m.ring.material.opacity = 0.25;
+      m.ring.scale.setScalar(1);
+    }
+  }
+}
+
+// ============ FAULT CHAIN VISUALIZATION ============
+let faultLines = new THREE.Group();
+scene.add(faultLines);
+
+function clearFaultLines() {
+  while (faultLines.children.length > 0) {
+    const obj = faultLines.children[0];
+    faultLines.remove(obj);
+    if (obj.material) obj.material.dispose();
+    if (obj.geometry) obj.geometry.dispose();
+  }
+}
+
+function drawFaultChain() {
+  clearFaultLines();
+  const visibleChain = FAULT_CHAIN.filter(i => i < visibleCount);
+  if (visibleChain.length < 2) return;
+
+  for (let i = 0; i < visibleChain.length - 1; i++) {
+    const a = meshes.find(m => m.axiomIdx === visibleChain[i]);
+    const b = meshes.find(m => m.axiomIdx === visibleChain[i + 1]);
+    if (!a || !b) continue;
+
+    const start = a.group.position;
+    const end = b.group.position;
+    const mid = start.clone().add(end).multiplyScalar(0.5);
+    mid.y += 1.5;
+
+    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+    const points = curve.getPoints(20);
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineDashedMaterial({
+      color: 0xd4694a,
+      linewidth: 2,
+      scale: 1,
+      dashSize: 0.3,
+      gapSize: 0.2,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const line = new THREE.Line(geo, mat);
+    line.computeLineDistances();
+    faultLines.add(line);
+  }
+}
+
+// ============ INTERACTION ============
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onCanvasClick(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(triadGroup.children, true);
+
+  for (const hit of intersects) {
+    let obj = hit.object;
+    while (obj && obj.userData.axiomIdx === undefined) obj = obj.parent;
+    if (obj && obj.userData.axiomIdx !== undefined) {
+      selectedAxiom = obj.userData.axiomIdx;
+      updateMeshes();
+      updateUI();
+      return;
+    }
+  }
+}
+renderer.domElement.addEventListener('click', onCanvasClick);
+
+// ============ UI BINDINGS ============
+document.querySelectorAll('.scale-btn').forEach(btn => {
+  btn.onclick = () => {
+    const newScale = +btn.dataset.scale;
+    document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentScale = newScale;
+    visibleCount = newScale;
+    selectedAxiom = Math.min(selectedAxiom, visibleCount - 1);
+    rebuildScene();
+    drawFaultChain();
+  };
+});
+
+function updateUI() {
+  const a = axioms[selectedAxiom];
+  document.getElementById('selectedTitle').textContent = `${a.id} — ${a.key}`;
+
+  const badge = document.getElementById('stateBadge');
+  badge.textContent = a.state;
+  badge.className = 'state-pill ' + a.state;
+
+  document.getElementById('m-val').textContent = `${a.merkle} ${a.merkle ? 'verifiable' : 'unverifiable'}`;
+  document.getElementById('y-val').textContent = `${a.yes} ${a.yes ? 'matches' : 'no match'}`;
+  document.getElementById('n-val').textContent = `${a.no} ${a.no ? 'violation' : 'no violation'}`;
+  document.getElementById('o-val').textContent = `${a.yes}${a.no} → ${a.state}`;
+
+  // System stats
+  const visible = axioms.slice(0, visibleCount);
+  document.getElementById('s-total').textContent = visibleCount * 3;
+  document.getElementById('s-hold').textContent = visible.filter(x => x.state === 'HOLD').length;
+  document.getElementById('s-viol').textContent = visible.filter(x => x.state === 'VIOLATED').length;
+  const halt = (KILL_SWITCH < visibleCount && axioms[KILL_SWITCH].state === 'VIOLATED') ||
+               visible.some(x => x.state === 'CONTRADICTION');
+  const haltEl = document.getElementById('s-halt');
+  haltEl.textContent = halt ? 'YES' : 'NO';
+  haltEl.style.color = halt ? '#d4694a' : '';
+
+  if (halt) showToast('SYSTEM HALT');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// Buttons
+document.getElementById('btn-run').onclick = () => {
+  running = !running;
+  document.getElementById('btn-run').textContent = running ? '⏸ Pause' : '▶ Run simulation';
+};
+document.getElementById('btn-step').onclick = stepSim;
+document.getElementById('btn-random').onclick = () => {
+  for (let i = 0; i < visibleCount; i++) {
+    const a = axioms[i];
+    const r = Math.random();
+    if (r < 0.65) a.test = a.reference;
+    else if (r < 0.85) a.test = 'VIOLATION:' + a.reference;
+    else if (r < 0.95) a.test = 'unknown';
+    else a.reference = '';
+    evaluateAxiom(a);
+  }
+  updateMeshes();
+  updateUI();
+};
+document.getElementById('btn-fault').onclick = () => {
+  // Animate fault chain T036 → T042 → T025 → T064
+  FAULT_CHAIN.forEach((i, idx) => {
+    if (i < visibleCount) {
+      setTimeout(() => {
+        axioms[i].test = 'VIOLATION:' + axioms[i].reference;
+        evaluateAxiom(axioms[i]);
+        updateMeshes();
+        updateUI();
+      }, idx * 500);
+    }
+  });
+};
+document.getElementById('btn-reset').onclick = () => {
+  axioms.forEach(a => {
+    a.reference = 'good-state';
+    a.test = 'good-state';
+    evaluateAxiom(a);
+  });
+  updateMeshes();
+  updateUI();
+};
+document.getElementById('btn-kill').onclick = () => {
+  if (KILL_SWITCH < visibleCount) {
+    axioms[KILL_SWITCH].test = 'VIOLATION:' + axioms[KILL_SWITCH].reference;
+    evaluateAxiom(axioms[KILL_SWITCH]);
+    updateMeshes();
+    updateUI();
+  } else {
+    showToast('T128 not visible at this scale');
+  }
+};
+
+function stepSim() {
+  // Random perturbations
+  for (let attempt = 0; attempt < Math.max(2, visibleCount / 16); attempt++) {
+    const i = Math.floor(Math.random() * visibleCount);
+    const a = axioms[i];
+    if (Math.random() < 0.4) {
+      if (a.state === 'VIOLATED' && Math.random() < 0.5) {
+        a.test = a.reference;
+      } else if (Math.random() < 0.15) {
+        a.test = 'VIOLATION:' + a.reference;
+      } else if (Math.random() < 0.08) {
+        a.reference = Math.random() < 0.5 ? '' : 'good-state';
+      } else {
+        a.test = a.reference;
+      }
+      evaluateAxiom(a);
+    }
+  }
+  updateMeshes();
+  updateUI();
+}
+
+// ============ RESIZE ============
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============ RENDER LOOP ============
+function animate(now) {
+  requestAnimationFrame(animate);
+  if (running && now - lastStep > STEP_INTERVAL) {
+    stepSim();
+    lastStep = now;
+  }
+  // Subtle rotation of selection ring
+  for (const m of meshes) {
+    if (m.axiomIdx === selectedAxiom) {
+      m.ring.rotation.z += 0.02;
+    }
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// Initialize
+axioms.forEach(evaluateAxiom);
+rebuildScene();
+animate(0);
+</script>
+</body>
+</html>

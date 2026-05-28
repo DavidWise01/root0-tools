@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortress & Moat — v3 Plasmatronic</title>
+<style>
+:root{
+  --bg:#02050a;
+  --panel:#0a121f;
+  --cyan:#00e5ff;
+  --cyan-dim:#00a3b8;
+  --gold:#ffd24d;
+  --gold-dim:#b08a1e;
+  --text:#d6e7f5;
+  --muted:#6b7f95;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background: radial-gradient(1200px 800px at 70% 20%, #0b1a2a 0%, #02050a 55%, #000 100%);
+  color:var(--text);
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.app{max-width:1200px;margin:0 auto;padding:24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+h1{font-size:clamp(20px,3vw,30px);letter-spacing:.14em;font-weight:800;margin:0;display:flex;align-items:baseline;gap:10px}
+h1 span{color:var(--muted);font-weight:600;font-size:.55em;letter-spacing:.22em;border:1px solid rgba(0,229,255,.2);padding:3px 8px;border-radius:6px;background:rgba(0,229,255,.06)}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{
+  background:linear-gradient(180deg,#132438,#0b1523);
+  border:1px solid rgba(0,229,255,.28);
+  color:var(--text);
+  padding:10px 16px;
+  border-radius:12px;
+  font-weight:600;
+  letter-spacing:.05em;
+  cursor:pointer;
+  transition:.2s;
+  font-size:13px;
+}
+button:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.25);transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none;padding:6px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02)}
+.toggle input{appearance:none;width:36px;height:20px;background:#0a1523;border:1px solid #1a2c41;border-radius:20px;position:relative;cursor:pointer;transition:.2s}
+.toggle input::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:var(--muted);top:2px;left:2px;transition:.2s}
+.toggle input:checked{border-color:var(--cyan);background:rgba(0,229,255,.12)}
+.toggle input:checked::after{left:18px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+
+main{display:grid;grid-template-columns:1.15fr .85fr;gap:32px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr;gap:24px}}
+
+.viz{position:relative}
+.fortress{position:relative;width:100%;aspect-ratio:1/1;max-width:560px;margin:0 auto;filter:drop-shadow(0 20px 60px rgba(0,0,0,.6))}
+.grid-bg{position:absolute;inset:0;border-radius:50%;background:
+ radial-gradient(circle at center, rgba(0,229,255,.09) 0%, transparent 60%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 36px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 36px);
+}
+.moat{position:absolute;inset:6%;border-radius:50%;border:2px solid rgba(0,229,255,.18);box-shadow:inset 0 0 40px rgba(0,229,255,.1),0 0 70px rgba(0,229,255,.06);opacity:.3;transition:opacity .3s}
+
+.ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(0,229,255,.18);transition:.2s}
+.ring span{position:absolute;top:-9px;right:6px;font-size:10px;color:var(--cyan-dim);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;opacity:.75;letter-spacing:.08em}
+.r0{width:12%;height:12%;border-color:rgba(0,229,255,.4);box-shadow:0 0 14px rgba(0,229,255,.18) inset}
+.r1{width:26%;height:26%}
+.r2{width:40%;height:40%}
+.r4{width:62%;height:62%}
+.r8{width:88%;height:88%;border-color:rgba(0,229,255,.3)}
+.ring.pulse{border-color:var(--cyan);box-shadow:0 0 24px rgba(0,229,255,.35)}
+
+.quads{position:absolute;inset:0;pointer-events:none}
+.quads div{position:absolute;top:50%;left:50%;width:1px;height:88%;background:linear-gradient(180deg,transparent,rgba(0,229,255,.28),transparent);transform-origin:center;opacity:.55}
+.q1{transform:translate(-50%,-50%) rotate(0)}
+.q2{transform:translate(-50%,-50%) rotate(90deg)}
+.q3{transform:translate(-50%,-50%) rotate(45deg);opacity:.28}
+.q4{transform:translate(-50%,-50%) rotate(135deg);opacity:.28}
+
+.core{position:absolute;top:50%;left:50%;width:10.5%;height:10.5%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#00222c 0%,#00151c 60%,#000a0e 100%);box-shadow:0 0 22px rgba(0,229,255,.65),inset 0 0 12px rgba(0,229,255,.45);z-index:3}
+.core-inner{position:absolute;inset:18%;border-radius:50%;background:radial-gradient(circle,var(--cyan) 0%,rgba(0,229,255,.2) 40%,transparent 70%);opacity:.75;animation:corePulse 2.6s ease-in-out infinite}
+@keyframes corePulse{0%,100%{transform:scale(.92);opacity:.6}50%{transform:scale(1.12);opacity:1}}
+
+.plasma-wave{position:absolute;top:50%;left:50%;width:88%;height:88%;border-radius:50%;border:2px solid var(--cyan);transform:translate(-50%,-50%) scale(.05);opacity:.35;box-shadow:0 0 30px rgba(0,229,255,.55),inset 0 0 18px rgba(0,229,255,.35),0 0 60px rgba(0,229,255,.2);mix-blend-mode:screen;pointer-events:none;z-index:2}
+.plasma-wave::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(0,229,255,.4);filter:blur(4px);opacity:.7}
+
+.flash{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95) 0%,rgba(255,210,77,.7) 25%,transparent 70%);opacity:0;pointer-events:none;transition:opacity .25s;z-index:5}
+.flash.show{opacity:.9}
+
+.labels-bottom{text-align:center;margin-top:14px;font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;opacity:.85}
+
+.panel{background:linear-gradient(180deg,rgba(11,20,34,.92),rgba(6,12,22,.88));border:1px solid rgba(0,229,255,.16);border-radius:22px;padding:22px;box-shadow:0 12px 50px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.02);backdrop-filter:blur(8px)}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.trio>div{background:#07111f;border:1px solid rgba(0,229,255,.12);border-radius:14px;padding:13px 10px;text-align:center;position:relative;overflow:hidden}
+.trio>div::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,229,255,.08),transparent);opacity:.5}
+.trio label{display:block;font-size:10.5px;letter-spacing:.14em;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+.val{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:600;letter-spacing:.02em;position:relative}
+.val.coin{font-size:18px}
+.val.coin.heads{color:var(--gold);text-shadow:0 0 14px rgba(255,210,77,.55)}
+.val.coin.tails{color:var(--cyan);text-shadow:0 0 14px rgba(0,229,255,.55)}
+.val.coin.flip{animation:flip .6s ease}
+@keyframes flip{0%{transform:rotateY(0)}50%{transform:rotateY(90deg) scale(.85)}100%{transform:rotateY(0)}}
+
+.cycle{margin:18px 0 22px}
+.cycle-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase}
+.bar{height:10px;background:#06101c;border:1px solid rgba(0,229,255,.16);border-radius:20px;overflow:hidden;position:relative}
+.bar>div{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--gold));box-shadow:0 0 14px rgba(0,229,255,.5);transition:width .2s linear;position:relative}
+.bar>div::after{content:'';position:absolute;top:0;bottom:0;right:0;width:60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4));mix-blend-mode:overlay;animation:shimmer 2s linear infinite}
+@keyframes shimmer{0%{transform:translateX(-80px)}100%{transform:translateX(80px)}}
+
+.registers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.reg{background:#07111f;border:1px solid rgba(0,229,255,.1);border-radius:12px;padding:12px}
+.reg label{font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.bits{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.bits span{width:24px;height:28px;display:grid;place-items:center;background:#040b14;border:1px solid #132537;border-radius:6px;color:#2e4258;font-family:ui-monospace,monospace;font-size:15px;transition:.2s}
+.bits span.on{color:var(--cyan);border-color:rgba(0,229,255,.55);background:rgba(0,229,255,.09);box-shadow:0 0 10px rgba(0,229,255,.25) inset,0 0 8px rgba(0,229,255,.2);text-shadow:0 0 8px rgba(0,229,255,.9)}
+.phase{font-family:ui-monospace,monospace;font-size:22px;margin-top:6px;color:var(--text);letter-spacing:.02em}
+
+.indicators{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.ind{flex:1 1 140px;display:flex;align-items:center;gap:8px;background:#07111f;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:10px 12px;font-size:12px;letter-spacing:.06em;color:var(--muted);transition:.3s;min-width:140px}
+.ind .dot{width:8px;height:8px;border-radius:50%;background:#2a3a4e;box-shadow:0 0 0 rgba(0,0,0,0);transition:.3s}
+.ind.active{color:var(--text);border-color:rgba(255,210,77,.45);background:rgba(255,210,77,.06)}
+#hammy.active{color:var(--gold);text-shadow:0 0 12px rgba(255,210,77,.45)}
+#hammy.active .dot{background:var(--gold);box-shadow:0 0 12px var(--gold)}
+#base.active{color:var(--cyan);border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.06);text-shadow:0 0 10px rgba(0,229,255,.4)}
+#base.active .dot{background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+
+.hamilton{background:linear-gradient(180deg,#0d1d2e,#0a1523);border:1px solid rgba(255,210,77,.22);border-radius:14px;padding:14px;text-align:center;position:relative;overflow:hidden}
+.hamilton::before{content:'';position:absolute;inset:-1px;background:conic-gradient(from 0deg,transparent,rgba(255,210,77,.15),transparent);animation:spin 8s linear infinite;opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hamilton label{font-size:11px;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase;position:relative}
+.hamilton .val{font-size:34px;color:var(--gold);text-shadow:0 0 16px rgba(255,210,77,.45);margin-top:4px;position:relative}
+
+body.tick{filter:brightness(1.04)}
+.tick .core{box-shadow:0 0 32px rgba(0,229,255,.95),inset 0 0 16px rgba(0,229,255,.7)}
+.fence-labels{position:absolute;inset:0;pointer-events:none;font-family:ui-monospace,monospace;font-size:10px;color:var(--cyan-dim)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>FORTRESS & MOAT <span>v3 PLASMATRONIC</span></h1>
+    <div class="controls">
+      <button id="play">START</button>
+      <button id="reset">RESET</button>
+      <label class="toggle"><input type="checkbox" id="plasma" checked> PLASMA MODE</label>
+    </div>
+  </header>
+
+  <main>
+    <section class="viz">
+      <div class="fortress" id="fortress">
+        <div class="grid-bg"></div>
+        <div class="moat"></div>
+        <div class="ring r8" data-fence="8"><span>8</span></div>
+        <div class="ring r4" data-fence="4"><span>4</span></div>
+        <div class="ring r2" data-fence="2"><span>2</span></div>
+        <div class="ring r1" data-fence="1"><span>1</span></div>
+        <div class="ring r0" data-fence="0"><span>0</span></div>
+        <div class="quads">
+          <div class="q1"></div><div class="q2"></div><div class="q3"></div><div class="q4"></div>
+        </div>
+        <div class="plasma-wave" id="wave"></div>
+        <div class="core" id="core"><div class="core-inner"></div></div>
+        <div class="flash" id="flash"></div>
+      </div>
+      <div class="labels-bottom">slow metronomic / plasmatronic / cyclic — metron plasmon coin</div>
+    </section>
+
+    <aside class="panel">
+      <div class="trio">
+        <div>
+          <label>Metron</label>
+          <div id="metron" class="val">0</div>
+        </div>
+        <div>
+          <label>Plasmon</label>
+          <div id="plasmon" class="val">0.0</div>
+        </div>
+        <div>
+          <label>Coin</label>
+          <div id="coin" class="val coin heads">HEADS</div>
+        </div>
+      </div>
+
+      <div class="cycle">
+        <div class="cycle-head"><span>Cycle</span><span id="cycleCount">0.00 / 24.5</span></div>
+        <div class="bar"><div id="cycleBar"></div></div>
+      </div>
+
+      <div class="registers">
+        <div class="reg">
+          <label>Shadow Register</label>
+          <div class="bits" id="shadow"></div>
+        </div>
+        <div class="reg">
+          <label>Phase Register</label>
+          <div class="phase" id="phase">0.0°</div>
+        </div>
+      </div>
+
+      <div class="indicators">
+        <div class="ind" id="hammy"><span class="dot"></span> HAMMY BIT 1</div>
+        <div class="ind" id="base"><span class="dot"></span> BASE 00</div>
+      </div>
+
+      <div class="hamilton">
+        <label>Hamilton Counter</label>
+        <div id="hcount" class="val">0</div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  const el = {
+    play: document.getElementById('play'),
+    reset: document.getElementById('reset'),
+    plasma: document.getElementById('plasma'),
+    metron: document.getElementById('metron'),
+    plasmon: document.getElementById('plasmon'),
+    coin: document.getElementById('coin'),
+    cycleCount: document.getElementById('cycleCount'),
+    cycleBar: document.getElementById('cycleBar'),
+    shadow: document.getElementById('shadow'),
+    phase: document.getElementById('phase'),
+    hammy: document.getElementById('hammy'),
+    base: document.getElementById('base'),
+    hcount: document.getElementById('hcount'),
+    wave: document.getElementById('wave'),
+    core: document.getElementById('core'),
+    flash: document.getElementById('flash')
+  };
+
+  let running = false;
+  let plasmaMode = true;
+  let metron = 0;
+  let plasmon = 0;
+  let direction = 1;
+  let isAscending = true;
+  let prevIsAscending = true;
+  let lastPlasmon = 0;
+  let hamilton = 0;
+  let cycle = 0;
+  const TOTAL_CYCLES = 24.5;
+  const HALF_MS = 8000; // 8s per half
+  const FULL_MS = HALF_MS * 2;
+
+  let startTime = null;
+  let pausedTime = 0;
+  let rafId = null;
+  let metronInterval = null;
+  let audioCtx = null;
+
+  function tickSound() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = isAscending ? 740 : 480;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.04, audioCtx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.09);
+      o.connect(g).connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.1);
+    } catch(e){}
+  }
+
+  function startMetronome() {
+    if (metronInterval) clearInterval(metronInterval);
+    metronInterval = setInterval(() => {
+      if (!running) return;
+      metron++;
+      document.body.classList.add('tick');
+      setTimeout(() => document.body.classList.remove('tick'), 130);
+      tickSound();
+
+      if (!plasmaMode) {
+        plasmon += direction;
+        if (plasmon >= 28) {
+          plasmon = 28;
+          direction = -1;
+          isAscending = false;
+          triggerPeak();
+        } else if (plasmon <= 0) {
+          plasmon = 0;
+          direction = 1;
+          isAscending = true;
+          triggerBase();
+        }
+        if (isAscending && Math.abs(plasmon - 27) < 0.1) triggerHammy();
+        checkFlip();
+        updateUI();
+      }
+    }, 1000); // 60 BPM
+  }
+
+  function checkFlip() {
+    if (prevIsAscending !== isAscending) {
+      el.coin.classList.add('flip');
+      setTimeout(() => el.coin.classList.remove('flip'), 600);
+      prevIsAscending = isAscending;
+    }
+  }
+
+  function triggerHammy() {
+    hamilton++;
+    el.hcount.textContent = hamilton;
+    el.hammy.classList.add('active');
+    setTimeout(() => el.hammy.classList.remove('active'), 900);
+  }
+  function triggerBase() {
+    el.base.classList.add('active');
+    setTimeout(() => el.base.classList.remove('active'), 900);
+  }
+  function triggerPeak() {
+    el.flash.classList.add('show');
+    setTimeout(() => el.flash.classList.remove('show'), 280);
+  }
+
+  function animate(now) {
+    if (!running) return;
+    if (!startTime) startTime = now - pausedTime;
+    pausedTime = now - startTime;
+    const elapsed = pausedTime;
+
+    if (plasmaMode) {
+      const t = (elapsed % FULL_MS) / FULL_MS;
+      plasmon = 14 * (1 - Math.cos(t * Math.PI * 2));
+      const newAsc = Math.sin(t * Math.PI * 2) >= 0;
+      isAscending = newAsc;
+      
+      // events
+      if (prevIsAscending && !isAscending && lastPlasmon < 28 && plasmon >= 27.9) triggerPeak();
+      if (!prevIsAscending && isAscending && lastPlasmon > 0.5 && plasmon < 0.2) triggerBase();
+      if (isAscending && lastPlasmon < 27 && plasmon >= 27) triggerHammy();
+      
+      checkFlip();
+    }
+
+    cycle = Math.min(TOTAL_CYCLES, elapsed / FULL_MS);
+    if (cycle >= TOTAL_CYCLES) {
+      running = false;
+      el.play.textContent = 'COMPLETE';
+      updateUI(true);
+      return;
+    }
+
+    lastPlasmon = plasmon;
+    updateUI();
+    rafId = requestAnimationFrame(animate);
+  }
+
+  function updateUI(final=false) {
+    el.metron.textContent = metron;
+    el.plasmon.textContent = plasmon.toFixed(1);
+    el.coin.textContent = isAscending ? 'HEADS' : 'TAILS';
+    el.coin.className = 'val coin ' + (isAscending ? 'heads' : 'tails');
+
+    el.cycleCount.textContent = cycle.toFixed(2) + ' / 24.5';
+    el.cycleBar.style.width = (cycle / TOTAL_CYCLES * 100) + '%';
+
+    // shadow register 8-bit scaled
+    const v = Math.floor((plasmon/28)*255);
+    const bits = v.toString(2).padStart(8,'0');
+    el.shadow.innerHTML = [...bits].map(b=>`<span class="${b==='1'?'on':''}">${b}</span>`).join('');
+
+    // phase register
+    const deg = (plasmon/28)*360;
+    el.phase.textContent = deg.toFixed(1) + '°';
+
+    // wave
+    const scale = 0.06 + (plasmon/28)*0.94;
+    el.wave.style.transform = `translate(-50%,-50%) scale(${scale})`;
+    el.wave.style.opacity = 0.25 + 0.75 * Math.sin(Math.PI * plasmon/28);
+
+    // core breathe
+    const breathe = 1 + 0.1 * Math.sin(Date.now()/550) * (0.4 + plasmon/50);
+    el.core.style.transform = `translate(-50%,-50%) scale(${breathe})`;
+
+    // rings pulse at fences 0,1,2,4,8 mapped to plasmon
+    const fenceMap = {0:0,1:3.5,2:7,4:14,8:28};
+    document.querySelectorAll('.ring').forEach(r=>{
+      const f = parseInt(r.dataset.fence);
+      const target = fenceMap[f];
+      const d = Math.abs(plasmon - target);
+      if (d < 1.1) {
+        r.classList.add('pulse');
+        r.style.boxShadow = `0 0 ${18 - d*10}px rgba(0,229,255,${1 - d/1.1})`;
+      } else {
+        r.classList.remove('pulse');
+        r.style.boxShadow = '';
+      }
+    });
+
+    // moat ripple
+    const moat = document.querySelector('.moat');
+    moat.style.opacity = 0.25 + (plasmon>24 ? (plasmon-24)/4*0.5 : 0);
+
+    // hammy proximity glow
+    if (isAscending && plasmon > 26 && plasmon < 27.5) {
+      el.hammy.style.boxShadow = `0 0 ${20*(plasmon-26)}px rgba(255,210,77,0.3)`;
+    } else {
+      el.hammy.style.boxShadow = '';
+    }
+    if (!isAscending && plasmon < 1.5) {
+      el.base.style.boxShadow = `0 0 ${20*(1.5-plasmon)}px rgba(0,229,255,0.25)`;
+    } else if(!el.base.classList.contains('active')) {
+      el.base.style.boxShadow = '';
+    }
+
+    if (final) {
+      el.wave.style.opacity = 0.15;
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    el.play.textContent = 'PAUSE';
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    }
+    if (!metronInterval) startMetronome();
+    rafId = requestAnimationFrame(animate);
+  }
+  function pause() {
+    running = false;
+    el.play.textContent = 'RESUME';
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+  function reset() {
+    pause();
+    startTime = null;
+    pausedTime = 0;
+    metron = 0;
+    plasmon = 0;
+    direction = 1;
+    isAscending = true;
+    prevIsAscending = true;
+    lastPlasmon = 0;
+    hamilton = 0;
+    cycle = 0;
+    el.hcount.textContent = '0';
+    el.play.textContent = 'START';
+    el.hammy.classList.remove('active');
+    el.base.classList.remove('active');
+    el.flash.classList.remove('show');
+    updateUI();
+  }
+
+  el.play.addEventListener('click', () => {
+    if (running) pause(); else start();
+  });
+  el.reset.addEventListener('click', reset);
+  el.plasma.addEventListener('change', e => {
+    plasmaMode = e.target.checked;
+    if (!plasmaMode) {
+      plasmon = Math.round(plasmon);
+    }
+  });
+
+  // init
+  updateUI();
+  // auto show base at start
+  setTimeout(()=>triggerBase(), 400);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>GT-MESH v2.0</title>
+<style>
+:root{--bg:#020612;--panel:rgba(0,10,20,.76);--line:rgba(0,229,255,.35);--cyan:#3ee7ff;--green:#44ff8a;--gold:#ffd35a;--orange:#ff8a2a;--mag:#e168ff;--blue:#27a8ff;--ink:#dffbff;--muted:#8bb8c4}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink);font-family:ui-monospace,Consolas,monospace}
+body{background:radial-gradient(circle at 50% 45%,rgba(0,229,255,.12),transparent 30%),linear-gradient(rgba(0,229,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.04) 1px,transparent 1px),var(--bg);background-size:100% 100%,28px 28px,28px 28px}
+#mesh{position:fixed;inset:0;width:100vw;height:100vh}
+.app{position:fixed;inset:0;display:grid;grid-template-rows:46px 1fr 150px;gap:8px;padding:10px;pointer-events:none}
+.top{display:grid;grid-template-columns:180px 1fr 210px;align-items:center;border-bottom:1px solid var(--line)}
+.badge,.mode,.panel{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:8px;box-shadow:inset 0 0 24px rgba(0,229,255,.03)}
+.badge{color:var(--cyan)}.title{text-align:center;font-size:18px;letter-spacing:.22em}.mode{text-align:right}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+.main{display:grid;grid-template-columns:320px 1fr 320px;gap:8px;min-height:0}.left,.right{display:flex;flex-direction:column;gap:7px;min-height:0}
+.center{position:relative;border:1px solid var(--line);border-radius:7px;background:rgba(0,0,0,.12);overflow:hidden}
+.panel{pointer-events:auto}.panel h3{margin:0 0 7px;color:var(--cyan);font-size:13px;text-transform:uppercase}.dimrow{display:grid;grid-template-columns:25px 1fr 45px;gap:8px;align-items:center;margin:4px 0}.b{width:8px;height:8px;border-radius:50%;box-shadow:0 0 10px currentColor}.dv{font-size:20px;color:#fff}.seq{display:grid;grid-template-columns:repeat(4,1fr);font-size:14px;line-height:1.55}.meter{display:grid;grid-template-columns:25px 1fr 55px;gap:8px;align-items:center;font-size:12px;margin:7px 0}.track{height:8px;background:#05121c;border:1px solid rgba(0,229,255,.18);border-radius:999px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue))}.fill.w{background:linear-gradient(90deg,var(--mag),var(--gold))}
+.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}button{background:#020712;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:7px;font:inherit;font-size:11px;cursor:pointer;text-transform:uppercase}button:hover,button.active{color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,.25)}
+.info,.status{font-size:12px;line-height:1.7}.info b,.status span{float:right;color:#fff;font-weight:400}.status span{color:var(--green)}
+.oscrow{display:grid;grid-template-columns:35px 45px 1fr 42px;gap:6px;align-items:center;margin:8px 0;font-size:12px}.wave{height:24px}.legend{font-size:12px;line-height:1.7}.legend div:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:currentColor;box-shadow:0 0 10px currentColor}
+.bottom{display:grid;grid-template-columns:1fr 340px 340px 210px;gap:8px}.tracker{display:flex;gap:10px;align-items:center;justify-content:center;height:70px}.step{display:flex;flex-direction:column;align-items:center;font-size:12px}.node{width:20px;height:20px;border:2px solid currentColor;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 10px currentColor}.activeStep{color:var(--green)}.metric{display:grid;grid-template-columns:135px 1fr 45px;gap:6px;font-size:12px;margin:5px 0}.packet{font-size:12px;white-space:pre-wrap}.sig{text-align:center;font-size:52px;color:var(--gold);text-shadow:0 0 20px var(--gold)}
+#eq{position:absolute;top:12px;left:0;right:0;text-align:center;font-size:24px;letter-spacing:.18em}#axis{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:var(--green);font-size:16px;letter-spacing:.18em}#fbox{position:absolute;right:20px;bottom:54px;border:1px solid var(--line);background:rgba(0,0,0,.65);border-radius:5px;padding:12px 28px;font-size:22px;text-align:center}
+.hud{position:absolute;text-shadow:0 0 12px currentColor;font-size:14px}.n{top:90px;left:58%;color:var(--green)}.e{top:45%;right:45px;color:var(--cyan)}.s{bottom:92px;left:43%;color:var(--orange)}.w{top:45%;left:24px;color:var(--mag)}
+@media(max-width:1100px){.app{grid-template-rows:46px 1fr}.main{grid-template-columns:1fr}.left,.right,.bottom{display:none}}
+</style>
+</head>
+<body>
+<canvas id="mesh"></canvas>
+<div class="app">
+<div class="top"><div class="badge">GT-MESH v2.0</div><div class="title">GRAVITY TENSOR MESH • FRACTAL PULSAR BEACON</div><div class="mode">ⓘ WITNESS MODE <span class="dot"></span></div></div>
+<div class="main">
+<div class="left">
+<div class="panel"><h3>Dimension Chain</h3><div id="dims"></div><div style="text-align:center">= 1 = 0</div></div>
+<div class="panel"><h3>State Sequence</h3><div class="seq" id="seq"></div></div>
+<div class="panel"><h3>Containment / Wave</h3><div class="meter"><span>C</span><div class="track"><div id="cf" class="fill"></div></div><span id="cv">98%</span></div><div class="meter"><span>W</span><div class="track"><div id="wf" class="fill w"></div></div><span id="wv">2%</span></div></div>
+<div class="panel"><h3>Controls</h3><div class="buttons"><button id="tick">Tick</button><button id="auto">Auto</button><button id="pulse">Pulse</button><button id="ground">Ground</button><button id="invert">Invert</button><button id="reset">Reset</button></div></div>
+</div>
+<div class="center">
+<div id="eq">∞ × ∞ × ∞ + 6 - 3 = 0 = 1</div><div class="hud n">NORTH NODE<br/>PHASE 0°</div><div class="hud e">EAST NODE<br/>PHASE 180°</div><div class="hud s">SOUTH NODE<br/>PHASE 270°</div><div class="hud w">WEST NODE<br/>PHASE 90°</div><div id="fbox">∞ × ∞ × ∞ + 6 - 3<br/>= 0 = 1</div><div id="axis">0 · 0 · 0<br/>FRACTAL ORIGIN AXIS</div>
+</div>
+<div class="right">
+<div class="panel"><h3>Mesh Inspector</h3><div class="info">NODES <b id="nodes">12288</b><br/>EDGES <b id="edges">36864</b><br/>FACES <b id="faces">24576</b><br/>TENSILE LOAD <b id="load">0.782</b><br/>FIELD COHERENCE <b id="coh">0.982</b><br/>WAVE AMPLITUDE <b id="amp">0.020</b><br/>PHASE DRIFT <b id="drift">0.0007</b></div></div>
+<div class="panel"><h3>Phase Oscillators</h3><div id="osc"></div></div>
+<div class="panel"><h3>Field Layers</h3><div class="legend"><div style="color:var(--cyan)">CONTAINMENT FIELD</div><div style="color:var(--mag)">WAVE MODULATION</div><div style="color:var(--green)">TENSOR MESH</div><div style="color:var(--gold)">FRACTAL BEACON</div><div style="color:var(--orange)">NODE HARMONICS</div></div></div>
+<div class="panel"><h3>Beacon Status</h3><div class="status">PULSAR <span>ACTIVE</span><br/>NODES <span>STABLE</span><br/>MESH <span>LOCKED</span><br/>WITNESS <span>ON</span></div></div>
+</div>
+</div>
+<div class="bottom">
+<div class="panel"><h3>Sequence Tracker</h3><div class="tracker" id="tracker"></div><div style="font-size:12px;color:var(--muted)">CYCLE COUNT: <span id="cyc" style="color:var(--green)">0</span></div></div>
+<div class="panel"><h3>Tensor Metrics</h3><canvas id="spark" style="width:100%;height:32px"></canvas><div id="metrics"></div></div>
+<div class="panel"><h3>Witness Packet</h3><div class="packet" id="packet"></div></div>
+<div class="panel"><h3>Signature</h3><div class="sig">)(1)(</div></div>
+</div>
+</div>
+<script>
+const canvas=document.getElementById("mesh"),ctx=canvas.getContext("2d"),spark=document.getElementById("spark"),sctx=spark.getContext("2d"),$=id=>document.getElementById(id);
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;spark.width=330;spark.height=34}addEventListener("resize",resize);resize();
+const dims=[10,4,2,1,20,8,12,6,4,1,0],dc=["#e168ff","#ff5e57","#ff8a2a","#ffd35a","#baff5a","#44ff8a","#00ffd0","#27a8ff","#0a7cff","#8060ff","#fff"],seq=["00","123","132","213","231","312","321","00","123","213","132","312","231","321","00"],osc=[["A","0°","#44ff8a"],["B","120°","#9b55ff"],["C","240°","#27a8ff"],["D","300°","#ff8a2a"]];
+const VM={cycle:0,auto:false,C:98,W:2,phase:0,witness:"--------",rings:[],hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(16).padStart(8,"0")},tick(){this.cycle++;this.phase=(this.phase+1)%seq.length;this.W=Math.max(0,Math.min(100,this.W+(Math.random()-.48)*.5));this.C=100-this.W;this.witness=this.hash(this.cycle+seq[this.phase]+this.C.toFixed(2));if(this.cycle%9===0)this.rings.push({r:20,life:120,c:this.W>8?"#ffd35a":"#3ee7ff"});ui()},pulse(){this.W=Math.min(100,this.W+6);this.C=100-this.W;this.rings.push({r:20,life:150,c:"#ffd35a"});this.tick()},ground(){this.C=98;this.W=2;this.rings.push({r:20,life:150,c:"#44ff8a"});this.tick()},invert(){let x=this.C;this.C=this.W;this.W=x;this.rings.push({r:20,life:150,c:"#e168ff"});this.tick()},reset(){this.cycle=0;this.C=98;this.W=2;this.phase=0;this.rings=[];this.tick()},packet(){return"GT-MESH::PULSAR::0.0.0::INFxINFxINF+6-3::0=1::\\nC"+this.C.toFixed(1)+".W"+this.W.toFixed(1)+"::SEQ"+seq[this.phase]+"::CYC"+this.cycle+"::SIG"+this.witness}};
+function init(){$("dims").innerHTML=dims.map((d,i)=>`<div class=dimrow style=color:${dc[i]}><span class=b style=background:currentColor></span><span class=dv>${d}</span><span>×${dims[i+1]??""}</span></div>`).join("");$("seq").innerHTML=seq.map((s,i)=>`<span>${i+1}&nbsp;${s}</span>`).join("");$("osc").innerHTML=osc.map(o=>`<div class=oscrow style=color:${o[2]}><b>${o[0]}</b><span>${o[1]}</span><canvas class=wave></canvas><span>1.00x</span></div>`).join("");$("tracker").innerHTML=seq.map((s,i)=>`<div class=step id=st${i}><div class=node>${i+1}</div><div>${s}</div></div>`).join("")}init();
+function line(x1,y1,x2,y2,c,a=.35,w=1){ctx.save();ctx.strokeStyle=c;ctx.globalAlpha=a;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
+function draw(){ctx.fillStyle="rgba(2,6,18,.16)";ctx.fillRect(0,0,canvas.width,canvas.height);const cx=canvas.width/2,cy=canvas.height/2+10,t=VM.cycle*.018,base=Math.min(canvas.width,canvas.height)*.18;
+for(let i=0;i<50;i++){let x=(Math.sin(i*91.17+t*.7)*.5+.5)*canvas.width,y=(Math.cos(i*47.31+t*.4)*.5+.5)*canvas.height;ctx.fillStyle="rgba(62,231,255,.18)";ctx.fillRect(x,y,1.2,1.2)}
+let pts=[];for(let i=0;i<16;i++){let a=i/16*Math.PI*2+t;for(let j=0;j<9;j++){let r=base+j*22+Math.sin(a*3+j+t)*22,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*.52,z=Math.sin(j*.8+t+i*.2)*80;pts.push([x+z*.45,y-z*.28,j])}}
+for(let i=0;i<pts.length;i++){let p=pts[i];if(i+1<pts.length&&pts[i+1][2]===p[2])line(p[0],p[1],pts[i+1][0],pts[i+1][1],"#3ee7ff",.16);if(i+9<pts.length)line(p[0],p[1],pts[i+9][0],pts[i+9][1],"#44ff8a",.1);ctx.fillStyle=i%5?"#3ee7ff":"#ffd35a";ctx.beginPath();ctx.arc(p[0],p[1],1.7,0,Math.PI*2);ctx.fill()}
+const cols=["#baff5a","#27a8ff","#ff8a2a","#e168ff"];for(let q=0;q<4;q++){let a=q*Math.PI/2-t*.6,x=cx+Math.cos(a)*base*1.45,y=cy+Math.sin(a)*base*.95;line(cx,cy,x,y,cols[q],.55,2);ctx.save();ctx.fillStyle=cols[q];ctx.shadowColor=cols[q];ctx.shadowBlur=32;ctx.beginPath();ctx.arc(x,y,12+Math.sin(t*5+q)*3,0,Math.PI*2);ctx.fill();ctx.restore();ctx.save();ctx.strokeStyle=cols[q];ctx.globalAlpha=.25;for(let r=20;r<95;r+=18){ctx.beginPath();ctx.ellipse(x,y,r,r*.55,t+q,0,Math.PI*2);ctx.stroke()}ctx.restore()}
+ctx.save();ctx.fillStyle="#fff8cf";ctx.shadowColor="#ffd35a";ctx.shadowBlur=70+VM.W*2;ctx.beginPath();ctx.arc(cx,cy,22+Math.sin(t*8)*6+VM.W*.15,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle="#020612";ctx.font="14px monospace";ctx.textAlign="center";ctx.fillText("PULSAR 000",cx,cy+5);ctx.fillStyle="#fff3a3";ctx.fillText("FRACTAL BEACON",cx,cy+30);line(cx,cy-base*1.6,cx,cy+base*1.6,"#ffd35a",.75,2);
+VM.rings.forEach(r=>{r.life--;r.r+=7;ctx.save();ctx.strokeStyle=r.c;ctx.globalAlpha=Math.max(0,r.life/150);ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,r.r,0,Math.PI*2);ctx.stroke();ctx.restore()});VM.rings=VM.rings.filter(r=>r.life>0);
+requestAnimationFrame(draw)}
+function drawUI(){document.querySelectorAll(".wave").forEach((c,idx)=>{c.width=120;c.height=24;let g=c.getContext("2d");g.clearRect(0,0,120,24);g.strokeStyle=osc[idx][2];g.beginPath();for(let x=0;x<120;x++){let y=12+Math.sin(x*.18+VM.cycle*.12+idx*2.094)*8;if(x)g.lineTo(x,y);else g.moveTo(x,y)}g.stroke()});sctx.clearRect(0,0,330,34);sctx.strokeStyle="#27a8ff";sctx.beginPath();for(let x=0;x<330;x++){let y=18+Math.sin(x*.08+VM.cycle*.15)*8+Math.sin(x*.22)*4;if(x)sctx.lineTo(x,y);else sctx.moveTo(x,y)}sctx.stroke()}
+function ui(){$("cf").style.width=VM.C+"%";$("wf").style.width=VM.W+"%";$("cv").textContent=VM.C.toFixed(1)+"%";$("wv").textContent=VM.W.toFixed(1)+"%";$("cyc").textContent=VM.cycle;$("packet").textContent=VM.packet();$("nodes").textContent=(12288+VM.cycle*3).toLocaleString();$("edges").textContent=(36864+VM.cycle*9).toLocaleString();$("faces").textContent=(24576+VM.cycle*6).toLocaleString();$("load").textContent=(.782+Math.sin(VM.cycle*.05)*.008).toFixed(3);$("coh").textContent=(VM.C/100).toFixed(3);$("amp").textContent=(VM.W/100).toFixed(3);$("drift").textContent=(Math.abs(Math.sin(VM.cycle*.03))*.001).toFixed(4);document.querySelectorAll(".step").forEach((e,i)=>e.classList.toggle("activeStep",i===VM.phase));$("metrics").innerHTML=[["CONTAINMENT",VM.C],["WAVE",VM.W],["ENTROPY",VM.W*.9],["COHERENCE",VM.C],["RESONANCE",89+Math.sin(VM.cycle*.1)*2]].map((m,i)=>`<div class=metric><span>${m[0]}</span><div class=track><div class="fill ${i==1||i==2?'w':''}" style=width:${Math.max(2,Math.min(100,m[1]))}%></div></div><span>${m[1].toFixed(1)}%</span></div>`).join("");drawUI()}
+function loop(){if(VM.auto)VM.tick();drawUI();setTimeout(loop,80)}$("tick").onclick=()=>VM.tick();$("auto").onclick=e=>{VM.auto=!VM.auto;e.target.classList.toggle("active",VM.auto);e.target.textContent=VM.auto?"Pause":"Auto"};$("pulse").onclick=()=>VM.pulse();$("ground").onclick=()=>VM.ground();$("invert").onclick=()=>VM.invert();$("reset").onclick=()=>VM.reset();ui();draw();loop();
+</script>
+</body>
+</html>

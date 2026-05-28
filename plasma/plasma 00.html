@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLASMA BYTE WORKBENCH - Continuity Core v1.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --plasma-amber: #f59e0b;
+    --plasma-purple: #a855f7;
+    --plasma-cyan: #06b6d4;
+  }
+  * { font-variant-ligatures: none; }
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: #030308;
+    overscroll-behavior: none;
+  }
+  body::before {
+    content:'';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(1200px circle at 15% 20%, rgba(168,85,247,0.08), transparent 40%),
+      radial-gradient(900px circle at 85% 80%, rgba(6,182,212,0.07), transparent 40%),
+      radial-gradient(600px circle at 50% 50%, rgba(245,158,11,0.05), transparent 40%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.01) 0px, transparent 1px, transparent 2px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .tech-grid {
+    background-image: 
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .plasma-text {
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .bit {
+    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    transform: translateZ(0);
+  }
+  .bit:active { transform: scale(0.94); }
+  .bit[data-state="@"] {
+    background: radial-gradient(circle at center, rgba(245,158,11,0.15), transparent 60%);
+    border-color: rgba(245,158,11,0.5);
+    box-shadow: inset 0 0 20px rgba(245,158,11,0.1), 0 0 20px rgba(245,158,11,0.15);
+  }
+  .bit[data-state="0"] {
+    background: radial-gradient(circle at center, rgba(6,182,212,0.12), transparent 60%);
+    border-color: rgba(6,182,212,0.4);
+    box-shadow: inset 0 0 20px rgba(6,182,212,0.08), 0 0 15px rgba(6,182,212,0.1);
+  }
+  .bit[data-state="#"] {
+    background: radial-gradient(circle at center, rgba(168,85,247,0.15), transparent 60%);
+    border-color: rgba(168,85,247,0.5);
+    box-shadow: inset 0 0 20px rgba(168,85,247,0.1), 0 0 20px rgba(168,85,247,0.15);
+  }
+  .tensor-glow {
+    background: conic-gradient(from 0deg, #f59e0b, #a855f7, #06b6d4, #f59e0b);
+    filter: blur(40px);
+    animation: spin 12s linear infinite;
+    opacity: 0.25;
+  }
+  .tensor-glow-right {
+    animation-direction: reverse;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse-core {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes drift {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    33% { transform: translateY(-3px) translateX(2px); }
+    66% { transform: translateY(2px) translateX(-2px); }
+  }
+  .core-pulse { animation: pulse-core 3s ease-in-out infinite; }
+  .drift { animation: drift 6s ease-in-out infinite; }
+  .scanline::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 50%, rgba(6,182,212,0.03) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+  .custom-scroll::-webkit-scrollbar-track { background: #0a0a12; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: #27273a; border-radius: 3px; }
+  .custom-scroll::-webkit-scrollbar-thumb:hover { background: #3f3f5a; }
+</style>
+</head>
+<body class="text-zinc-300 selection:bg-fuchsia-500/30 selection:text-fuchsia-200">
+<div class="relative z-10 min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="relative border-b border-zinc-900/80 bg-black/60 backdrop-blur-xl">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="plasma-text text-[18px] sm:text-xl md:text-2xl tracking-[0.18em] leading-none">
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-fuchsia-400 to-cyan-400">PLASMA BYTE WORKBENCH</span>
+        </h1>
+        <div class="flex items-center gap-3 mt-1">
+          <span class="text-[10px] uppercase tracking-widest text-zinc-500">Continuity Core</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">v1.0</span>
+          <span class="hidden sm:flex items-center gap-1 text-[10px] text-emerald-400/80"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>ONLINE</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="plasma-text text-xl sm:text-2xl md:text-[28px] leading-none tracking-wider">
+          <span id="identity-27" class="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">27</span>
+          <span class="text-zinc-700 mx-1">=</span>
+          <span id="identity-0" class="text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">0</span>
+          <span class="text-zinc-700 mx-1">=</span>
+          <span id="identity-1" class="text-fuchsia-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">(1)</span>
+        </div>
+        <div class="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-zinc-600 mt-1">Identity Verified • Witness Active</div>
+      </div>
+    <!-- Core Structure Bar -->
+    <div class="border-t border-zinc-950 bg-[#050507]/90">
+      <div class="max-w-[1600px] mx-auto px-3 py-2 overflow-x-auto custom-scroll">
+        <div class="flex items-center justify-center gap-2 sm:gap-3 text-[11px] sm:text-[13px] font-mono whitespace-nowrap tracking-wider">
+          <span class="text-amber-400">-+</span><span class="text-zinc-600">(gt)</span><span class="text-fuchsia-500">(#/@/)</span>
+          <span class="text-zinc-700 px-2">⟨</span>
+          <span class="text-zinc-500">(1)</span>
+          <span class="text-cyan-400 mx-1 core-pulse inline-block">00</span>
+          <span class="text-zinc-500">(1)</span>
+          <span class="text-zinc-700 px-2">⟩</span>
+          <span class="text-amber-400">(/@#)</span><span class="text-zinc-600">(gt)</span><span class="text-fuchsia-500">+-</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workbench -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5">
+      
+      <!-- Left Gravity Tensor -->
+      <div class="xl:col-span-2 order-2 xl:order-1">
+        <div id="gt-left" class="group relative h-full min-h-[220px] xl:min-h-[520px] bg-[#050507] border border-amber-900/40 rounded-2xl p-4 overflow-hidden cursor-pointer hover:border-amber-500/60 transition-all duration-500 scanline">
+          <div class="tensor-glow absolute -inset-20"></div>
+          <div class="relative z-10 h-full flex flex-col">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[10px] uppercase tracking-[0.2em] text-amber-400/90">Gravity Tensor</div>
+                <div class="text-[11px] text-zinc-500 -mt-0.5">LEFT • INBOUND</div>
+              </div>
+              <div class="w-2 h-2 rounded-full bg-amber-500/80 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.6)]"></div>
+            </div>
+            
+            <div class="flex-1 flex flex-col items-center justify-center py-6">
+              <div id="gt-left-polarity" class="plasma-text text-5xl font-light text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-all duration-300">-+</div>
+              <div class="mt-3 text-[11px] font-mono text-zinc-600">(gt)</div>
+              <div class="mt-4 flex items-center gap-1.5 text-xl tracking-widest">
+                <span class="text-fuchsia-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]">#</span>
+                <span class="text-zinc-700">/</span>
+                <span class="text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.7)]">@</span>
+                <span class="text-zinc-700">/</span>
+              </div>
+              <div class="mt-6 w-full max-w-[140px]">
+                <div class="h-[60px] w-full relative">
+                  <svg viewBox="0 0 100 60" class="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="lg1" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.8"/>
+                        <stop offset="100%" stop-color="#a855f7" stop-opacity="0.2"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,30 Q25,10 50,30 T100,30" fill="none" stroke="url(#lg1)" stroke-width="1.5" opacity="0.8">
+                      <animate attributeName="d" dur="4s" repeatCount="indefinite"
+                        values="M0,30 Q25,10 50,30 T100,30;M0,30 Q25,50 50,30 T100,30;M0,30 Q25,10 50,30 T100,30"/>
+                    </path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div class="flex items-center justify-between text-[9px] uppercase tracking-widest text-zinc-600 mb-1.5">
+                <span>Field Strength</span>
+                <span id="gt-left-value" class="text-amber-400/80 font-mono">0.84</span>
+              </div>
+              <div class="h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+                <div id="gt-left-bar" class="h-full w-[84%] bg-gradient-to-r from-amber-600 via-orange-500 to-fuchsia-600 transition-all duration-700 shadow-[0_0_10px_rgba(245,158,11,0.4)]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Workbench -->
+      <div class="xl:col-span-8 order-1 xl:order-2">
+        <div class="bg-[#07070c]/80 backdrop-blur-xl border border-zinc-800/70 rounded-2xl overflow-hidden tech-grid">
+          <!-- Workbench Header -->
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-zinc-900 bg-black/40">
+            <div class="flex items-center gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+              <span class="text-[11px] uppercase tracking-[0.2em] text-zinc-400">40-Bit Plasma Array</span>
+              <span class="hidden sm:inline text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 text-zinc-500 border border-zinc-800">5 phases × 8 bits</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btn-randomize" class="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition">Randomize</button>
+              <button id="btn-clear" class="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition">Clear to 0</button>
+            </div>
+          </div>
+
+          <!-- Bit Grid -->
+          <div class="p-3 sm:p-4 md:p-5">
+            <div id="bit-workbench" class="space-y-3"></div>
+
+            <!-- Continuity Core -->
+            <div class="mt-6 pt-5 border-t border-zinc-900/70">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Continuity Core</div>
+                <div class="flex items-center gap-2">
+                  <button id="btn-collapse" class="group relative px-3 py-1.5 rounded-lg bg-[#0a0a14] border border-fuchsia-900/50 hover:border-fuchsia-700/70 transition">
+                    <span class="relative z-10 text-[11px] uppercase tracking-widest text-fuchsia-300/90 group-hover:text-fuchsia-200">Collapse</span>
+                    <div class="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition bg-fuchsia-500/10 blur-xl"></div>
+                  </button>
+                  <button id="btn-nest" class="group relative px-3 py-1.5 rounded-lg bg-[#0a0a14] border border-cyan-900/50 hover:border-cyan-700/70 transition">
+                    <span class="relative z-10 text-[11px] uppercase tracking-widest text-cyan-300/90 group-hover:text-cyan-200">Nest cc(n)</span>
+                    <div class="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition bg-cyan-500/10 blur-xl"></div>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="relative bg-[#050508] rounded-xl border border-zinc-900 p-4 overflow-hidden">
+                <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 20px 20px;"></div>
+                <div class="relative flex items-center justify-center gap-3 sm:gap-6">
+                  <div class="text-zinc-600 text-2xl sm:text-3xl">(1)</div>
+                  
+                  <div class="flex-1 max-w-[500px] relative h-[56px] flex items-center">
+                    <div class="absolute inset-0 flex items-center">
+                      <div class="w-full h-[2px] bg-gradient-to-r from-transparent via-zinc-800 to-transparent"></div>
+                    </div>
+                    <div class="absolute inset-0 flex items-center">
+                      <div class="w-full h-px bg-gradient-to-r from-amber-500/0 via-amber-500/50 to-fuchsia-500/0 blur-sm"></div>
+                    </div>
+                    <!-- Core glow -->
+                    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                      <div class="w-24 h-24 rounded-full bg-cyan-500/10 blur-2xl core-pulse"></div>
+                      <div class="w-16 h-16 -mt-20 ml-4 rounded-full bg-fuchsia-500/10 blur-xl core-pulse" style="animation-delay: 0.5s"></div>
+                    </div>
+                    <!-- 00 bits -->
+                    <div class="relative w-full flex items-center justify-center gap-2">
+                      <div id="core-left-0" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#0b14] border-2 border-cyan-500/70 flex items-center justify-center text-cyan-300 font-medium shadow-[0_0_20px_rgba(6,182,212,0.3)] drift">0</div>
+                      <div id="core-right-0" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#0b0b14] border-2 border-cyan-500/70 flex items-center justify-center text-cyan-300 font-medium shadow-[0_0_20px_rgba(6,182,212,0.3)] drift" style="animation-delay: 1s">0</div>
+                    </div>
+                    <!-- Nesting visualization -->
+                    <div id="core-nest" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div class="plasma-text text-[10px] sm:text-xs text-zinc-600 tracking-widest"></div>
+                    </div>
+                  </div>
+
+                  <div class="text-zinc-600 text-2xl sm:text-3xl">(1)</div>
+                </div>
+                <div class="mt-3 text-center">
+                  <div class="inline-flex items-center gap-2 text-[10px] text-zinc-600">
+                    <span>Witness Pair</span>
+                    <span class="text-zinc-800">•</span>
+                    <span>Nesting Depth: <span id="nest-depth" class="text-cyan-400">1</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Gravity Tensor -->
+      <div class="xl:col-span-2 order-3">
+        <div id="gt-right" class="group relative h-full min-h-[220px] xl:min-h-[520px] bg-[#050507] border border-fuchsia-900/40 rounded-2xl p-4 overflow-hidden cursor-pointer hover:border-fuchsia-500/60 transition-all duration-500 scanline">
+          <div class="tensor-glow tensor-glow-right absolute -inset-20"></div>
+          <div class="relative z-10 h-full flex flex-col">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-[10px] uppercase tracking-[0.2em] text-fuchsia-400/90">Gravity Tensor</div>
+                <div class="text-[11px] text-zinc-500 -mt-0.5">RIGHT • OUTBOUND</div>
+              </div>
+              <div class="w-2 h-2 rounded-full bg-fuchsia-500/80 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.6)]"></div>
+            </div>
+            
+            <div class="flex-1 flex flex-col items-center justify-center py-6">
+              <div id="gt-right-polarity" class="plasma-text text-5xl font-light text-fuchsia-400 drop-shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-all duration-300">+-</div>
+              <div class="mt-3 text-[11px] font-mono text-zinc-600">(gt)</div>
+              <div class="mt-4 flex items-center gap-1.5 text-xl tracking-widest">
+                <span class="text-zinc-700">/</span>
+                <span class="text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.7)]">@</span>
+                <span class="text-zinc-700">#</span>
+                <span class="text-fuchsia-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.7)]">#</span>
+              </div>
+              <div class="mt-6 w-full max-w-[140px]">
+                <div class="h-[60px] w-full relative">
+                  <svg viewBox="0 0 100 60" class="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="lg2" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8"/>
+                        <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,30 Q25,50 50,30 T100,30" fill="none" stroke="url(#lg2)" stroke-width="1.5" opacity="0.8">
+                      <animate attributeName="d" dur="4s" repeatCount="indefinite"
+                        values="M0,30 Q25,50 50,30 T100,30;M0,30 Q25,10 50,30 T100,30;M0,30 Q25,50 50,30 T100,30"/>
+                    </path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div class="flex items-center justify-between text-[9px] uppercase tracking-widest text-zinc-600 mb-1.5">
+                <span>Field Strength</span>
+                <span id="gt-right-value" class="text-fuchsia-400/80 font-mono">0.91</span>
+              </div>
+              <div class="h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+                <div id="gt-right-bar" class="h-full w-[91%] bg-gradient-to-r from-fuchsia-600 via-violet-500 to-cyan-600 transition-all duration-700 shadow-[0_0_10px_rgba(168,85,247,0.4)]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mt-4 lg:mt-5">
+      <!-- Pre-bit Structure -->
+      <div class="lg:col-span-4">
+        <div class="h-full bg-[#07070c]/70 backdrop-blur border border-zinc-800/60 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-[11px] uppercase tracking-[0.2em] text-zinc-400">Pre-bit Structure</div>
+            <div class="text-[10px] px-2 py-0.5 rounded bg-amber-950/40 text-amber-300/70 border border-amber-900/40">((1(1)(-1))</div>
+          </div>
+          
+          <div class="relative bg-[#050508] rounded-xl border border-zinc-900 p-4 overflow-hidden">
+            <div class="absolute inset-0">
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full border border-amber-900/20"></div>
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full border border-fuchsia-900/20"></div>
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border border-cyan-900/30"></div>
+            </div>
+            <div class="relative text-center py-2">
+              <div class="plasma-text text-[22px] sm:text-[26px] tracking-wider leading-none">
+                <span class="text-zinc-700">(</span><span class="text-zinc-700">(</span><span class="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">1</span><span class="text-zinc-600">(</span><span class="text-fuchsia-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">1</span><span class="text-zinc-600">)</span><span class="text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">(-1)</span><span class="text-zinc-700">)</span><span class="text-zinc-700">)</span>
+              </div>
+              <div class="mt-1 text-[10px] text-zinc-600">Witness • Core • Anti</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2.5 mt-3">
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5 text-center">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Witness</div>
+              <div id="witness-status" class="mt-1 text-sm font-medium text-amber-400">ACTIVE</div>
+              <div class="mt-1 w-full h-0.5 bg-zinc-950 rounded overflow-hidden"><div class="h-full w-[100%] bg-amber-500/70"></div></div>
+            </div>
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5 text-center">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Core</div>
+              <div class="mt-1 text-sm font-medium text-fuchsia-400">(1)</div>
+              <div class="mt-1 w-full h-0.5 bg-zinc-950 rounded overflow-hidden"><div class="h-full w-[85%] bg-fuchsia-500/70"></div></div>
+            </div>
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5 text-center">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Anti</div>
+              <div class="mt-1 text-sm font-medium text-cyan-400">-1</div>
+              <div class="mt-1 w-full h-0.5 bg-zinc-950 rounded overflow-hidden"><div class="h-full w-[70%] bg-cyan-500/70"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Byte Values & Readouts -->
+      <div class="lg:col-span-8">
+        <div class="h-full bg-[#07070c]/70 backdrop-blur border border-zinc-800/60 rounded-2xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="text-[11px] uppercase tracking-[0.2em] text-zinc-400">Byte Values • Plasma State Readouts</div>
+            <div class="flex items-center gap-3 text-[10px]">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500/70"></span><span class="text-zinc-500">@ = +1</span></span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-500/70"></span><span class="text-zinc-500">0 = 0</span></span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-fuchsia-500/70"></span><span class="text-zinc-500"># = -1</span></span>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto custom-scroll">
+            <div id="phase-readouts" class="grid grid-cols-5 gap-2 min-w-[600px]"></div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-zinc-900 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">State Space</div>
+              <div id="readout-states" class="mt-1 font-mono text-[13px] text-amber-400">27^0 = 1</div>
+              <div class="text-[10px] text-zinc-600">active bits</div>
+            </div>
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Field Coherence</div>
+              <div id="readout-field" class="mt-1 font-mono text-[13px] text-cyan-400">1.75</div>
+              <div class="text-[10px] text-zinc-600">gtL + gtR</div>
+            </div>
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Phase Status</div>
+              <div id="readout-phase" class="mt-1 font-mono text-[13px] text-fuchsia-400">COHERENT</div>
+              <div class="text-[10px] text-zinc-600">5/5 locked</div>
+            </div>
+            <div class="bg-[#050508] rounded-lg border border-zinc-900 p-2.5">
+              <div class="text-[9px] uppercase tracking-widest text-zinc-600">Theoretical Max</div>
+              <div class="mt-1 font-mono text-[11px] text-zinc-300">27^40</div>
+              <div class="text-[10px] text-zinc-600">≈1.80e57</div>
+            </div>
+          </div>
+
+          <div class="mt-3 bg-[#050508] rounded-lg border border-zinc-900 p-2.5">
+            <div class="text-[9px] uppercase tracking-widest text-zinc-600 mb-1">Full Plasma String (40)</div>
+            <div id="full-plasma" class="font-mono text-[12px] sm:text-[13px] tracking-wider break-all leading-relaxed"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase Controls Footer -->
+    <div class="mt-5 bg-[#07070c]/60 backdrop-blur border border-zinc-800/50 rounded-2xl p-3 sm:p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Phase Controls</div>
+        <div id="phase-controls" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-zinc-950 py-3 px-4 text-center">
+    <div class="max-w-[1600px] mx-auto flex items-center justify-between text-[10px] text-zinc-600">
+      <div>PLASMA INTELLIGENCE SUBSTRATE • Continuity Engine</div>
+      <div class="hidden sm:block">Gravity tensors operational • 27 = 0 = (1)</div>
+    </div>
+  </footer>
+</div>
+
+<!-- Collapse Modal -->
+<div id="modal-collapse" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-[#020208]/95 backdrop-blur-2xl"></div>
+  <div class="relative z-10 h-full flex flex-col items-center justify-center p-8 text-center">
+    <div class="absolute inset-0">
+      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20 blur-3xl" style="background: conic-gradient(from 0deg, #f59e0b, #a855f7, #06b6d4, #f59e0b); animation: spin 10s linear infinite;"></div>
+    </div>
+    <div class="relative">
+      <div class="text-[14px] uppercase tracking-[0.3em] text-zinc-500 mb-8">Identity Collapse Sequence</div>
+      <div id="collapse-display" class="plasma-text text-[120px] sm:text-[160px] leading-none font-thin"></div>
+      <div id="collapse-label" class="mt-6 text-xl tracking-widest text-zinc-500"></div>
+      <div class="mt-12 flex items-center justify-center gap-3 text-[11px] text-zinc-600">
+        <span>27 states</span><span>→</span><span>0 null</span><span>→</span><span>(1) witness</span>
+      </div>
+    </div>
+    <button id="modal-close" class="absolute top-6 right-6 w-8 h-8 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition">✕</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STATES = ['@', '0', '#'];
+  const STATE_MAP = { '@': 2, '0': 1, '#': 0 };
+  const COLORS = { '@': 'text-amber-400', '0': 'text-cyan-400', '#': 'text-fuchsia-500' };
+  const GLOWS = { '@': 'drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]', '0': 'drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]', '#': 'drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' };
+  const PHASES = ['SOLID','LIQUID','GAS','IONIZED','FIELD'];
+  const PHASE_COLORS = ['text-amber-400/70','text-sky-400/70','text-violet-400/70','text-fuchsia-400/70','text-cyan-400/70'];
+
+  let bits = new Array(40).fill(1); // 1 = '0'
+  let gtLeft = -1; // -+
+  let gtRight = 1; // +-
+  let nestDepth = 1;
+
+  const workbench = document.getElementById('bit-workbench');
+  const phaseReadouts = document.getElementById('phase-readouts');
+  const phaseControls = document.getElementById('phase-controls');
+
+  // Build bit grid
+  PHASES.forEach((phase, pi) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 sm:gap-3';
+    row.innerHTML = `
+      <div class="w-[70px] sm:w-[88px] shrink-0 text-right">
+        <div class="text-[10px] sm:text-[11px] uppercase tracking-widest ${PHASE_COLORS[pi]}">${phase}</div>
+        <div class="text-[9px] text-zinc-700 font-mono">${pi*8}–${pi*8+7}</div>
+      </div>
+      <div class="grid grid-cols-8 gap-1.5 sm:gap-2 flex-1" data-phase="${pi}"></div>
+    `;
+    workbench.appendChild(row);
+    const grid = row.querySelector('[data-phase]');
+    for (let i=0; i<8; i++) {
+      const idx = pi*8 + i;
+      const btn = document.createElement('button');
+      btn.className = 'bit group relative aspect-square bg-[#0a0a12] border border-zinc-800 rounded-[10px] sm:rounded-xl flex items-center justify-center hover:z-10';
+      btn.dataset.idx = idx;
+      btn.dataset.state = STATES[bits[idx]];
+      btn.innerHTML = `
+        <span class="state-text text-xl sm:text-2xl md:text-[26px] font-medium transition-all ${COLORS[STATES[bits[idx]]]} ${GLOWS[STATES[bits[idx]]]}">${STATES[bits[idx]]}</span>
+        <div class="absolute inset-0 rounded-[10px] sm:rounded-xl opacity-0 group-hover:opacity-100 transition pointer-events-none" style="box-shadow: inset 0 0 24px rgba(139,92,246,0.15)"></div>
+        <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-zinc-700 font-mono">${i}</div>
+      `;
+      btn.addEventListener('click', () => cycleBit(idx));
+      grid.appendChild(btn);
+    }
+  });
+
+  // Build phase readouts
+  PHASES.forEach((phase, pi) => {
+    const card = document.createElement('div');
+    card.className = 'bg-[#050508] rounded-lg border border-zinc-900 p-2.5';
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="text-[10px] uppercase tracking-widest ${PHASE_COLORS[pi]}">${phase}</div>
+        <div class="text-[9px] font-mono text-zinc-600" id="phase-hex-${pi}">0x0000</div>
+      </div>
+      <div class="font-mono text-[15px] leading-none tracking-wider" id="phase-plasma-${pi}"></div>
+      <div class="mt-1.5 flex gap-0.5" id="phase-bar-${pi}"></div>
+    `;
+    phaseReadouts.appendChild(card);
+    const bar = card.querySelector(`#phase-bar-${pi}`);
+    for(let i=0;i<8;i++){
+      const s = document.createElement('div');
+      s.className = 'h-1 flex-1 rounded-full bg-zinc-900';
+      s.innerHTML = '<div class="h-full rounded-full transition-all"></div>';
+      bar.appendChild(s);
+    }
+  });
+
+  // Phase controls
+  PHASES.forEach((phase, pi) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'flex items-center gap-1.5';
+    wrap.innerHTML = `
+      <span class="text-[10px] w-[58px] text-right uppercase tracking-widest ${PHASE_COLORS[pi]}">${phase}</span>
+      <div class="flex gap-1">
+        <button data-p="${pi}" data-s="0" class="px-2 py-1 rounded bg-[#0d16] border border-amber-900/40 text-amber-400/80 hover:bg-amber-950/30 text-[12px] w-6 h-6 flex items-center justify-center">@</button>
+        <button data-p="${pi}" data-s="1" class="px-2 py-1 rounded bg-[#0d0d16] border border-cyan-900/40 text-cyan-400/80 hover:bg-cyan-950/30 text-[12px] w-6 h-6 flex items-center justify-center">0</button>
+        <button data-p="${pi}" data-s="2" class="px-2 py-1 rounded bg-[#0d0d16] border border-fuchsia-900/40 text-fuchsia-400/80 hover:bg-fuchsia-950/30 text-[12px] w-6 h-6 flex items-center justify-center">#</button>
+        <button data-p="${pi}" data-s="r" class="px-1.5 py-1 rounded bg-[#0d0d16] border border-zinc-800 text-zinc-500 hover:text-zinc-300 text-[10px]">RND</button>
+      </div>
+    `;
+    phaseControls.appendChild(wrap);
+  });
+  phaseControls.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if(!b) return;
+    const p = +b.dataset.p;
+    const s = b.dataset.s;
+    for(let i=0;i<8;i++){
+      const idx = p*8 + i;
+      bits[idx] = s==='r' ? Math.floor(Math.random()*3) : +s;
+    }
+    updateAll();
+  });
+
+  function cycleBit(idx){
+    bits[idx] = (bits[idx] + 1) % 3;
+    updateBit(idx);
+    updateReadouts();
+    pulseCore();
+  }
+
+  function updateBit(idx){
+    const btn = document.querySelector(`button[data-idx="${idx}"]`);
+    const state = STATES[bits[idx]];
+    btn.dataset.state = state;
+    const txt = btn.querySelector('.state-text');
+    txt.textContent = state;
+    txt.className = `state-text text-xl sm:text-2xl md:text-[26px] font-medium transition-all ${COLORS[state]} ${GLOWS[state]}`;
+  }
+
+  function updateAll(){
+    bits.forEach((_,i)=>updateBit(i));
+    updateReadouts();
+  }
+
+  function updateReadouts(){
+    let activeBits = 0;
+    let fullPlasma = '';
+    
+    PHASES.forEach((_, pi) => {
+      const slice = bits.slice(pi*8, pi*8+8);
+      const symbols = slice.map(b => STATES[b]);
+      fullPlasma += symbols.join('') + (pi<4?' ':'');
+      
+      // Calculate ternary value
+      let val = 0;
+      slice.forEach((b, i) => {
+        val += STATE_MAP[STATES[b]] * Math.pow(3, 7-i);
+        if(b !== 1) activeBits++;
+      });
+      document.getElementById(`phase-hex-${pi}`).textContent = '0x' + val.toString(16).toUpperCase().padStart(4,'0');
+      document.getElementById(`phase-plasma-${pi}`).innerHTML = symbols.map(s => `<span class="${COLORS[s]}">${s}</span>`).join('');
+      
+      // Update mini bars
+      const bar = document.getElementById(`phase-bar-${pi}`);
+      [...bar.children].forEach((seg, i) => {
+        const inner = seg.firstElementChild;
+        const st = STATES[slice[i]];
+        inner.style.width = '100%';
+        inner.className = 'h-full rounded-full transition-all ' + 
+          (st==='@' ? 'bg-amber-500/70 shadow-[0_0_6px_rgba(245,158,11,0.5)]' : 
+           st==='0' ? 'bg-cyan-500/70 shadow-[0_0_6px_rgba(6,182,212,0.5)]' : 
+           'bg-fuchsia-500/70 shadow-[0_0_6px_rgba(168,85,247,0.5)]');
+      });
+    });
+
+    document.getElementById('full-plasma').innerHTML = fullPlasma.split('').map(c => 
+      c===' ' ? ' <span class="text-zinc-800">|</span> ' : `<span class="${COLORS[c]}">${c}</span>`
+    ).join('');
+
+    // State count 27^active
+    const states = activeBits === 0 ? '1' : formatPow27(activeBits);
+    document.getElementById('readout-states').textContent = `27^${activeBits} = ${states}`;
+    
+    // Field coherence
+    const leftVal = parseFloat(document.getElementById('gt-left-value').textContent);
+    const rightVal = parseFloat(document.getElementById('gt-right-value').textContent);
+    document.getElementById('readout-field').textContent = (leftVal + rightVal).toFixed(2);
+
+    // Phase status
+    const coherent = PHASES.filter((_,i) => {
+      const s = bits.slice(i*8,i*8+8);
+      return s.every(v=>v===s[0]);
+    }).length;
+    const statusEl = document.getElementById('readout-phase');
+    statusEl.textContent = coherent===5 ? 'COHERENT' : coherent>=3 ? 'PARTIAL' : 'DIVERGENT';
+    statusEl.className = 'mt-1 font-mono text-[13px] ' + (coherent===5 ? 'text-emerald-400' : coherent>=3 ? 'text-amber-400' : 'text-fuchsia-400');
+  }
+
+  function formatPow27(n){
+    // Approximate for display
+    if(n <= 15){
+      const v = (27n ** BigInt(n)).toString();
+      if(v.length <= 7) return v;
+      return v[0] + '.' + v.slice(1,3) + 'e' + (v.length-1);
+    }
+    const log10 = n * Math.log10(27);
+    const exp = Math.floor(log10);
+    const mant = Math.pow(10, log10 - exp);
+    return mant.toFixed(2) + 'e' + exp;
+  }
+
+  function pulseCore(){
+    document.getElementById('core-left-0').style.transform = 'scale(1.15)';
+    document.getElementById('core-right-0').style.transform = 'scale(1.15)';
+    setTimeout(()=>{
+      document.getElementById('core-left-0').style.transform = '';
+      document.getElementById('core-right-0').style.transform = '';
+    }, 180);
+  }
+
+  // Gravity tensors
+  document.getElementById('gt-left').addEventListener('click', () => {
+    gtLeft *= -1;
+    document.getElementById('gt-left-polarity').textContent = gtLeft===-1 ? '-+' : '+-';
+    const v = (0.65 + Math.random()*0.3).toFixed(2);
+    document.getElementById('gt-left-value').textContent = v;
+    document.getElementById('gt-left-bar').style.width = (v*100)+'%';
+    updateReadouts();
+  });
+  document.getElementById('gt-right').addEventListener('click', () => {
+    gtRight *= -1;
+    document.getElementById('gt-right-polarity').textContent = gtRight===-1 ? '-+' : '+-';
+    const v = (0.7 + Math.random()*0.28).toFixed(2);
+    document.getElementById('gt-right-value').textContent = v;
+    document.getElementById('gt-right-bar').style.width = (v*100)+'%';
+    updateReadouts();
+  });
+
+  // Buttons
+  document.getElementById('btn-randomize').addEventListener('click', () => {
+    bits = bits.map(()=>Math.floor(Math.random()*3));
+    updateAll();
+  });
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    bits = bits.map(()=>1);
+    updateAll();
+  });
+
+  // Collapse
+  const modal = document.getElementById('modal-collapse');
+  document.getElementById('btn-collapse').addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const disp = document.getElementById('collapse-display');
+    const label = document.getElementById('collapse-label');
+    const seq = [
+      {t:'27', l:'TWENTY-SEVEN STATES', c:'text-amber-400'},
+      {t:'0', l:'NULL FIELD', c:'text-cyan-400'},
+      {t:'(1)', l:'WITNESS SINGULARITY', c:'text-fuchsia-400'}
+    ];
+    let i=0;
+    function step(){
+      disp.className = `plasma-text text-[120px] sm:text-[160px] leading-none font-thin ${seq[i].c} drop-shadow-[0_0_40px_currentColor] transition-all duration-500`;
+      disp.textContent = seq[i].t;
+      label.textContent = seq[i].l;
+      i = (i+1)%3;
+    }
+    step();
+    const int = setInterval(step, 1200);
+    modal._int = int;
+  });
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+  function closeModal(){
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    clearInterval(modal._int);
+  }
+
+  // Nest
+  document.getElementById('btn-nest').addEventListener('click', () => {
+    nestDepth = nestDepth >= 5 ? 1 : nestDepth + 1;
+    document.getElementById('nest-depth').textContent = nestDepth;
+    const nestEl = document.querySelector('#core-nest div');
+    let txt = '';
+    for(let i=0;i<nestDepth;i++) txt += '⟨';
+    txt += ' (1) 00 (1) ';
+    for(let i=0;i<nestDepth;i++) txt += '⟩';
+    nestEl.textContent = `cc(${nestDepth}) = ` + txt;
+    nestEl.className = 'plasma-text text-[10px] sm:text-xs tracking-widest transition-all ' + 
+      (nestDepth%3===1 ? 'text-cyan-400/80' : nestDepth%3===2 ? 'text-fuchsia-400/80' : 'text-amber-400/80');
+  });
+
+  // Identity pulse
+  setInterval(()=>{
+    document.getElementById('identity-27').classList.toggle('opacity-70');
+    setTimeout(()=>document.getElementById('identity-0').classList.toggle('opacity-70'), 200);
+    setTimeout(()=>document.getElementById('identity-1').classList.toggle('opacity-70'), 400);
+  }, 3000);
+
+  // Initial render
+  updateAll();
+
+  // Seed some interesting pattern
+  for(let p=0;p<5;p++){
+    bits[p*8] = 0; bits[p*8+3]=1; bits[p*8+7]=2;
+  }
+  updateAll();
+})();
+</script>
+</body>
+</html>

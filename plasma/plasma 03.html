@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fortress & Moat — 4-bit Rings</title>
+<style>
+:root{
+  --bg:#020608;
+  --bg2:#06111a;
+  --panel:#08141d;
+  --line:#0d2633;
+  --cyan:#00e5ff;
+  --cyan-2:#00b8cc;
+  --dim:#2a4e5c;
+  --text:#c7f6ff;
+  --text2:#7aa8b6;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  overflow:hidden;
+}
+body:before{
+  content:"";
+  position:fixed; inset:0;
+  background:
+    radial-gradient(1200px 800px at 70% -10%, #04202a 0%, transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, #031724 0%, transparent 55%),
+    repeating-linear-gradient(transparent 0 2px, rgba(0,229,255,.03) 2px 3px);
+  pointer-events:none;
+}
+.app{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  height:100vh;
+}
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(6,18,26,.9), rgba(2,6,8,.7));
+  backdrop-filter: blur(8px);
+}
+h1{
+  margin:0;
+  font-size:15px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-weight:600;
+  color:#a6f1ff;
+}
+header .tag{
+  font-size:11px; color:var(--text2);
+  border:1px solid #0f2e3c; padding:4px 8px; border-radius:999px;
+  background:#05141c;
+}
+main{
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  gap:18px;
+  padding:18px;
+  height:calc(100vh - 53px);
+}
+@media (max-width: 980px){
+  main{grid-template-columns:1fr; grid-template-rows:1fr auto; height:auto}
+  body{overflow:auto}
+}
+.viz{
+  position:relative;
+  background:linear-gradient(180deg, #040c12, #030709);
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+}
+.viz svg{
+  width:min(92vmin, 820px);
+  height:auto;
+  max-height: calc(100vh - 160px);
+}
+.panel{
+  background:linear-gradient(180deg, #07141c, #050c12);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  box-shadow: inset 0 1px 0 rgba(0,229,255,.05), 0 10px 30px rgba(0,0,0,.4);
+}
+.panel h2{
+  margin:0 0 4px;
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:#8deaff;
+}
+.bit-toggles{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.bit-toggle{
+  background:#05121a;
+  border:1px solid #0e2f3e;
+  border-radius:12px;
+  padding:10px 6px;
+  text-align:center;
+  cursor:pointer;
+  transition:.2s;
+  user-select:none;
+}
+.bit-toggle:hover{border-color:#155066; transform:translateY(-1px)}
+.bit-toggle span{display:block;font-size:10px;color:var(--text2);letter-spacing:.1em}
+.bit-toggle strong{display:block;font-size:20px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;margin-top:4px;color:#6fdfff}
+.bit-toggle.on{background:rgba(0,229,255,.08); border-color:var(--cyan); box-shadow:0 0 18px rgba(0,229,255,.15) inset}
+.bit-toggle.on strong{color:var(--cyan); text-shadow:0 0 12px rgba(0,229,255,.8)}
+
+.actions{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.actions button{
+  padding:10px 12px;
+  background:#071a24;
+  border:1px solid #124557;
+  color:#b9f3ff;
+  border-radius:10px;
+  font-weight:600;
+  letter-spacing:.02em;
+  cursor:pointer;
+  transition:.2s;
+}
+.actions button:hover{border-color:var(--cyan); color:white; box-shadow:0 0 0 1px rgba(0,229,255,.2) inset}
+.actions button.primary{
+  grid-column:1 / -1;
+  background:linear-gradient(180deg, #00d4ec, #00a6b8);
+  color:#001419;
+  border-color:#00e5ff;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-size:12px;
+}
+.actions button.primary:hover{filter:brightness(1.08); box-shadow:0 0 20px rgba(0,229,255,.35)}
+
+.readouts{
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  padding:12px; background:#051219; border:1px solid #0c2330; border-radius:12px;
+}
+.readouts>div{background:#040b10; border:1px solid #0a1f29; border-radius:8px; padding:8px}
+.readouts label{display:block; font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.08em}
+.readouts span{display:block; font-family:ui-monospace, Menlo, monospace; font-size:15px; margin-top:3px; color:#d6faff}
+#r-hit.yes{color:var(--cyan); text-shadow:0 0 10px rgba(0,229,255,.7)}
+
+.god{
+  padding:12px; background:#051219; border:1px solid #0c2330; border-radius:12px;
+}
+.god h4{margin:0 0 8px; font-size:12px; color:#8deaff; font-weight:600; display:flex; justify-content:space-between; align-items:center}
+.god code{font-family:ui-monospace,monospace; color:#5deaff; opacity:.8}
+.god-lights{display:flex; gap:6px}
+.god-lights .light{
+  flex:1; text-align:center; padding:6px 0;
+  background:#031018; border:1px solid #0e2a36; border-radius:6px;
+  font-family:ui-monospace; font-size:14px; color:#355865;
+  transition:.3s;
+}
+.god-lights .light.on{color:#9ef3ff}
+.god-lights .light.match{border-color:var(--cyan); color:var(--cyan); box-shadow:0 0 12px rgba(0,229,255,.25) inset}
+.god-lights.detected .light{border-color:var(--cyan); box-shadow:0 0 16px rgba(0,229,255,.3) inset}
+
+.note{font-size:11px; color:#5a7d8a; line-height:1.4; border-top:1px dashed #113342; padding-top:10px}
+
+/* SVG styles */
+.ring{transform-origin:300px 300px; transition:transform .85s cubic-bezier(.22,1,.36,1)}
+.ring-circle{fill:none; stroke:#0b2c39; stroke-width:1.6}
+#ring1 .ring-circle{stroke:#0e3848}
+#ring2 .ring-circle{stroke:#0e3c4e}
+#ring3 .ring-circle{stroke:#0f4256}
+#ring4 .ring-circle{stroke:#10475d}
+.ring.detected .ring-circle{stroke:var(--cyan); filter:drop-shadow(0 0 10px rgba(0,229,255,.6))}
+.slot .slot-bg{fill:#071c25; stroke:#103949; stroke-width:1.2; transition:.3s}
+.slot .bit{font-family:ui-monospace,monospace; font-size:13px; fill:#4f6e7a; font-weight:700}
+.slot.on .slot-bg{fill:var(--cyan); stroke:var(--cyan); filter:drop-shadow(0 0 8px rgba(0,229,255,.8))}
+.slot.on .bit{fill:#00232c}
+
+.shadow .slot .slot-bg{fill:#04131a; stroke:#0a1f27}
+.shadow .slot.on .slot-bg{fill:#0a3c4a; stroke:#0a3c4a; filter:none}
+.shadow .slot .bit{fill:#2a4752}
+
+#quads line{stroke:#092636; stroke-dasharray:3 5; opacity:.7}
+
+.pyramid{
+  position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:38px;
+  font-family:ui-monospace; font-size:12px; color:#2a5463;
+}
+.pyramid .lvl{display:flex; align-items:center; gap:8px}
+.pyramid .lvl b{color:#5fbcd0; width:16px; text-align:right}
+.pyramid .lvl em{font-style:normal; color:#315a67}
+.pyramid .lvl:before{content:""; width:24px; height:1px; background:#143241; display:block}
+
+.explain{
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  font-size:12px; color:#4f7f8e; letter-spacing:.06em;
+  background:rgba(3,12,18,.7); border:1px solid #0e2a36; padding:6px 10px; border-radius:999px;
+  backdrop-filter: blur(4px);
+  white-space:nowrap;
+}
+@media (max-width:600px){.explain{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Fortress & Moat — 4-bit Rings</h1>
+    <div class="tag">dark tech • conceptual</div>
+  </header>
+  <main>
+    <section class="viz">
+      <div class="pyramid">
+        <div class="lvl"><b>8</b><em>moat</em></div>
+        <div class="lvl"><b>4</b><em></em></div>
+        <div class="lvl"><b>2</b><em></em></div>
+        <div class="lvl"><b>1</b><em></em></div>
+        <div class="lvl"><b>0</b><em>core</em></div>
+      </div>
+      <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="7" result="b"/>
+            <feMerge>
+              <feMergeNode in="b"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <radialGradient id="coreGrad">
+            <stop offset="0%" stop-color="#00e5ff" stop-opacity=".35"/>
+            <stop offset="70%" stop-color="#00e5ff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <!-- SHADOW LAYER -->
+        <g id="shadow" class="shadow" transform="translate(14 18)" opacity="0.16">
+          <g id="s-ring4" class="ring"><circle class="ring-circle" cx="300" cy="300" r="250"/>
+            <g class="slots">
+              <g class="slot" transform="translate(476.8 123.2)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(476.8 476.8)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(123.2 476.8)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(123.2 123.2)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            </g>
+          </g>
+          <g id="s-ring3" class="ring"><circle class="ring-circle" cx="300" cy="300" r="190"/>
+            <g class="slots">
+              <g class="slot" transform="translate(434.4 165.6)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(434.4 434.4)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(165.6 434.4)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(165.6 165.6)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            </g>
+          </g>
+          <g id="s-ring2" class="ring"><circle class="ring-circle" cx="300" cy="300" r="130"/>
+            <g class="slots">
+              <g class="slot" transform="translate(391.9 208.1)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(391.9 391.9)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(208.1 391.9)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(208.1 208.1)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            </g>
+          </g>
+          <g id="s-ring1" class="ring"><circle class="ring-circle" cx="300" cy="300" r="70"/>
+            <g class="slots">
+              <g class="slot" transform="translate(349.5 250.5)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(349.5 349.5)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(250.5 349.5)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+              <g class="slot" transform="translate(250.5 250.5)"><circle class="slot-bg" r="14"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            </g>
+          <g id="s-core" transform="translate(300 300)">
+            <circle r="24" fill="#021017" stroke="#0a2430" stroke-width="1"/>
+            <text id="s-core-bits" text-anchor="middle" dy="5" fill="#34515c" font-family="ui-monospace" font-size="13" font-weight="700">0010</text>
+          </g>
+        </g>
+
+        <!-- quadrant guides -->
+        <g id="quads">
+          <line x1="300" y1="300" x2="483.8" y2="116.2"/>
+          <line x1="300" y1="300" x2="483.8" y2="483.8"/>
+          <line x1="300" y1="300" x2="116.2" y2="483.8"/>
+          <line x1="300" y1="300" x2="116.2" y2="116.2"/>
+        </g>
+
+        <!-- MAIN RINGS outer to inner -->
+        <g id="ring4" class="ring">
+          <circle class="ring-circle" cx="300" cy="300" r="250"/>
+          <g class="slots">
+            <g class="slot" transform="translate(476.8 123.2)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(476.8 476.8)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(123.2 476.8)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(123.2 123.2)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+          </g>
+        <g id="ring3" class="ring">
+          <circle class="ring-circle" cx="300" cy="300" r="190"/>
+          <g class="slots">
+            <g class="slot" transform="translate(434.4 165.6)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(434.4 434.4)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(165.6 434.4)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(165.6 165.6)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+          </g>
+        </g>
+        <g id="ring2" class="ring">
+          <circle class="ring-circle" cx="300" cy="300" r="130"/>
+          <g class="slots">
+            <g class="slot" transform="translate(391.9 208.1)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(391.9 391.9)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(208.1 391.9)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(208.1 208.1)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+          </g>
+        </g>
+        <g id="ring1" class="ring">
+          <circle class="ring-circle" cx="300" cy="300" r="70"/>
+          <g class="slots">
+            <g class="slot" transform="translate(349.5 250.5)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(349.5 349.5)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(250.5 349.5)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+            <g class="slot" transform="translate(250.5 250.5)"><circle class="slot-bg" r="15"/><text class="bit" text-anchor="middle" dy="4">0</text></g>
+          </g>
+        </g>
+
+        <!-- core -->
+        <g id="core" transform="translate(300 300)">
+          <circle r="30" fill="url(#coreGrad)"/>
+          <circle r="26" fill="#031821" stroke="#00e5ff" stroke-width="1.5" filter="url(#glow)"/>
+          <text id="core-bits" text-anchor="middle" dy="5" fill="#9efaff" font-family="ui-monospace" font-size="14" font-weight="700">1101</text>
+        </g>
+
+        <g id="travel"></g>
+
+        <!-- quadrant labels -->
+        <g font-family="ui-monospace" font-size="11" fill="#1f4352">
+          <text x="494" y="106" text-anchor="middle">NE</text>
+          <text x="494" y="500" text-anchor="middle">SE</text>
+          <text x="106" y="500" text-anchor="middle">SW</text>
+          <text x="106" y="106" text-anchor="middle">NW</text>
+        </g>
+      </svg>
+      <div class="explain">1x4 shadow control → 2x4 fenced → 4 bits in/out → repeat to 8</div>
+    </section>
+
+    <aside class="panel">
+      <div>
+        <h2>4-bit Pattern</h2>
+        <div class="bit-toggles" id="toggles"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-pulse" class="primary">Pulse</button>
+        <button id="btn-descend">Descend ↓</button>
+        <button id="btn-ascend">Ascend ↑</button>
+      </div>
+
+      <div class="readouts">
+        <div><label>Current depth</label><span id="r-depth">0</span></div>
+        <div><label>Fence level</label><span id="r-fence">Core</span></div>
+        <div><label>Bits in</label><span id="r-in">1101</span></div>
+        <div><label>Bits out</label><span id="r-out">—</span></div>
+        <div style="grid-column:1/-1"><label>Control plane hit</label><span id="r-hit" class="hit">—</span></div>
+      </div>
+
+      <div class="god">
+        <h4>God Tunnel Detector <code>1-1-0-1-1</code></h4>
+        <div class="god-lights" id="god-lights">
+          <span class="light">–</span>
+          <span class="light">–</span>
+          <span class="light">–</span>
+          <span class="light">–</span>
+          <span class="light">–</span>
+        </div>
+      </div>
+
+      <div class="note">
+        Visualizing a digital pyramid fortress: four concentric fences, each divided into NE/SE/SW/NW quadrants. Bits travel outward, each ring rotates 90°. The faint inverse underneath is the shadow control plane. This is a conceptual map, not an active system.
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+const bitState = [1,1,0,1]; // NE, SE, SW, NW
+const quadNames = ['NE','SE','SW','NW'];
+const togglesEl = document.getElementById('toggles');
+
+function renderToggles(){
+  togglesEl.innerHTML = '';
+  bitState.forEach((b,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'bit-toggle' + (b?' on':'');
+    btn.innerHTML = `<span>${quadNames[i]}</span><strong>${b}</strong>`;
+    btn.onclick = ()=>{ bitState[i]^=1; renderToggles(); setCore(bitState); document.getElementById('r-in').textContent = bitState.join(''); };
+    togglesEl.appendChild(btn);
+  });
+}
+renderToggles();
+
+const rings = [null];
+const shadowRings = [null];
+for(let i=1;i<=4;i++){
+  rings[i] = {
+    el: document.getElementById('ring'+i),
+    slots: Array.from(document.querySelectorAll('#ring'+i+' .slot')),
+    rot:0
+  };
+  shadowRings[i] = {
+    el: document.getElementById('s-ring'+i),
+    slots: Array.from(document.querySelectorAll('#s-ring'+i+' .slot')),
+    rot:0
+  };
+}
+
+function rotateRight(arr,k){k=((k%4)+4)%4; if(k===0) return arr.slice(); return arr.slice(-k).concat(arr.slice(0,-k));}
+
+function setCore(bits){
+  document.getElementById('core-bits').textContent = bits.join('');
+  document.getElementById('s-core-bits').textContent = bits.map(b=>1-b).join('');
+}
+
+function clearRing(i){
+  const r = rings[i]; r.rot=0; r.el.style.transform='rotate(0deg)'; r.el.classList.remove('detected');
+  r.slots.forEach(s=>{ s.classList.remove('on'); s.querySelector('.bit').textContent='0'; });
+  const sr = shadowRings[i]; sr.rot=0; sr.el.style.transform='rotate(0deg)';
+  sr.slots.forEach(s=>{ s.classList.remove('on'); s.querySelector('.bit').textContent='0'; });
+}
+
+function updateRing(idx, bits, rotDeg){
+  const r = rings[idx]; r.rot = rotDeg; r.el.style.transform = `rotate(${rotDeg}deg)`;
+  const rotated = rotateRight(bits, rotDeg/90);
+  r.slots.forEach((slot,i)=>{
+    const b = rotated[i];
+    slot.classList.toggle('on', b===1);
+    slot.querySelector('.bit').textContent = b;
+  });
+  const sr = shadowRings[idx]; sr.el.style.transform = `rotate(${rotDeg}deg)`;
+  const flipped = bits.map(b=>1-b);
+  const srot = rotateRight(flipped, rotDeg/90);
+  sr.slots.forEach((slot,i)=>{
+    const b = srot[i];
+    slot.classList.toggle('on', b===1);
+    slot.querySelector('.bit').textContent = b;
+  });
+  const match = rotated[0]===1 && rotated[1]===1 && rotated[2]===0 && rotated[3]===1;
+  r.el.classList.toggle('detected', match);
+  return {rotated, match};
+}
+
+function resetAll(){
+  for(let i=1;i<=4;i++) clearRing(i);
+  setCore(bitState);
+  updatePanel(0, null, false);
+  curDepth = 0;
+}
+
+function travel(idx, bits){
+  const travel = document.getElementById('travel');
+  const radii = [0,70,130,190,250];
+  const r = radii[idx];
+  const angles = [-45,45,135,225].map(d=>d*Math.PI/180);
+  bits.forEach((b,i)=>{
+    const x2 = 300 + r*Math.cos(angles[i]);
+    const y2 = 300 + r*Math.sin(angles[i]);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',300); dot.setAttribute('cy',300);
+    dot.setAttribute('r', b?5:3.5);
+    dot.setAttribute('fill', b?'#00e5ff':'#0b4e5f');
+    dot.setAttribute('opacity','0.95');
+    dot.style.transition = 'cx .55s cubic-bezier(.2,.8,.2,1), cy .55s cubic-bezier(.2,.8,.2,1), opacity .4s';
+    dot.style.filter = b ? 'drop-shadow(0 0 6px rgba(0,229,255,.9))' : 'none';
+    travel.appendChild(dot);
+    requestAnimationFrame(()=>{ dot.setAttribute('cx',x2); dot.setAttribute('cy',y2); });
+    setTimeout(()=>dot.setAttribute('opacity','0'), 520);
+    setTimeout(()=>dot.remove(), 800);
+  });
+}
+
+const fences = ['Core','1x4 Shadow Control','2x4 Fenced','4x4 Repeat','8 Moat'];
+function updatePanel(depth, rotated, match){
+  document.getElementById('r-depth').textContent = depth;
+  document.getElementById('r-fence').textContent = fences[depth];
+  document.getElementById('r-out').textContent = rotated ? rotated.join('') : '—';
+  const hitEl = document.getElementById('r-hit');
+  hitEl.textContent = match ? 'HIT — pattern 11011 closed' : '—';
+  hitEl.classList.toggle('yes', !!match);
+  const lights = document.querySelectorAll('#god-lights .light');
+  const seq = rotated ? [...rotated, rotated[0]] : [null,null,null,null,null];
+  const pattern = [1,1,0,1,1];
+  lights.forEach((l,i)=>{
+    l.textContent = seq[i]==null ? '–' : seq[i];
+    l.classList.toggle('on', seq[i]===1);
+    l.classList.toggle('match', seq[i]!=null && seq[i]===pattern[i]);
+  });
+  document.getElementById('god-lights').classList.toggle('detected', !!match);
+}
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+let animating = false;
+let curDepth = 0;
+
+async function pulse(){
+  if(animating) return;
+  animating = true;
+  resetAll();
+  const bits = [...bitState];
+  setCore(bits);
+  document.getElementById('r-in').textContent = bits.join('');
+  await sleep(180);
+  for(let i=1;i<=4;i++){
+    travel(i,bits);
+    await sleep(160);
+    const {rotated, match} = updateRing(i, bits, 90);
+    curDepth = i;
+    updatePanel(i, rotated, match);
+    await sleep(680);
+  }
+  animating = false;
+}
+
+function descend(){
+  if(animating) return;
+  if(curDepth>=4){
+    resetAll();
+    return;
+  }
+  curDepth++;
+  const bits = [...bitState];
+  travel(curDepth, bits);
+  setTimeout(()=>{
+    const {rotated, match} = updateRing(curDepth, bits, 90);
+    updatePanel(curDepth, rotated, match);
+  },160);
+}
+function ascend(){
+  if(animating) return;
+  if(curDepth<=0) return;
+  clearRing(curDepth);
+  curDepth--;
+  updatePanel(curDepth, curDepth>0 ? rotateRight(bitState,1) : null, false);
+}
+
+document.getElementById('btn-pulse').onclick = pulse;
+document.getElementById('btn-descend').onclick = descend;
+document.getElementById('btn-ascend').onclick = ascend;
+
+// init
+setCore(bitState);
+document.getElementById('r-in').textContent = bitState.join('');
+updatePanel(0,null,false);
+
+// demo hint: pulse once on load
+setTimeout(()=>{pulse()}, 600);
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pencil One-Line Engine</title>
+<style>
+html,body{margin:0;min-height:100%;background:#e9e0d1;font-family:"Courier New",monospace;color:#222}
+body{display:flex;align-items:center;justify-content:center;padding:22px}
+.page{width:min(1180px,96vw);min-height:720px;background:#f7f2e8;border-radius:8px;box-shadow:0 18px 50px #0003;padding:26px;position:relative;overflow:hidden}
+.page:before{content:"";position:absolute;inset:0;background:linear-gradient(#00000008 1px,transparent 1px),linear-gradient(90deg,#00000006 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
+h1{text-align:center;font-weight:400;letter-spacing:.08em;text-decoration:underline;text-underline-offset:8px;margin:0 0 10px}
+.sub{text-align:center;font-size:13px;margin-bottom:10px}
+canvas{position:relative;z-index:2;width:100%;height:455px;display:block;cursor:crosshair}
+.controls{position:relative;z-index:3;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+button,input{font-family:inherit;background:transparent;border:1px solid #333;padding:8px 12px;box-shadow:2px 2px 0 #0002}
+button{cursor:pointer}
+.status{position:relative;z-index:3;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px;font-size:12px}
+.card{border:1px solid #0008;background:#ffffff33;padding:8px;min-height:52px}.card b{display:block;text-decoration:underline;margin-bottom:5px}
+@media(max-width:800px){.status{grid-template-columns:1fr 1fr}canvas{height:560px}}
+</style>
+</head>
+<body>
+<main class="page">
+<h1>Pencil One-Line Recursive Engine</h1>
+<div class="sub">))((1)) 999#@ / @#999 ((1))(( · contain → expand → cross → compress → re-contain</div>
+<canvas id="c"></canvas>
+<div class="controls">
+<button id="step">STEP</button><button id="run">RUN</button><button id="ground">GROUND</button><button id="audit">AUDIT PIPE</button>
+<input id="seed" value="."/>
+</div>
+<section class="status">
+<div class="card"><b>phase</b><span id="phase">contain</span></div>
+<div class="card"><b>cycle</b><span id="cycle">0</span></div>
+<div class="card"><b>wobble</b><span id="wobble">0.020</span></div>
+<div class="card"><b>short prune</b><span id="prune">0</span></div>
+<div class="card"><b>long audit</b><span id="long">0</span></div>
+</section>
+</main>
+<script>
+const cv=document.getElementById("c"),ctx=cv.getContext("2d"),$=id=>document.getElementById(id);
+const E={sig:["))((1))","999","#@","/","@#","999","((1))(("],ph:["contain","expand","cross","compress","re-contain"],cycle:0,pos:0,run:false,wobble:.02,short:[],long:[],wit:"--------",seed:"."};
+function h(s){let x=2166136261;for(let i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619)}return (x>>>0).toString(16).padStart(8,"0")}
+function step(){E.cycle++;E.pos=(E.pos+1)%E.sig.length;let p=E.ph[E.cycle%E.ph.length];if(Math.random()<E.wobble)E.short.push({t:Date.now(),p,m:E.sig[E.pos],s:E.seed});if(E.short.length>9){let k=E.short.filter((_,i)=>i%9===0);E.long.push({t:Date.now(),type:"wisdom_residue",count:E.short.length,kept:k.length,phase:p});E.short=k}if(E.cycle%27===0){E.wit=h(JSON.stringify(E.long).slice(-2048)+E.cycle+E.seed);E.long.push({t:Date.now(),type:"audit",witness:E.wit,cycle:E.cycle})}ui()}
+function ground(){E.pos=0;E.short=[];E.long.push({t:Date.now(),type:"ground",cycle:E.cycle});E.wit=h("ground"+E.cycle+E.seed);ui()}
+function audit(){E.wit=h(JSON.stringify({long:E.long,cycle:E.cycle,seed:E.seed}));E.long.push({t:Date.now(),type:"manual_audit",witness:E.wit,cycle:E.cycle});ui()}
+function ui(){E.seed=$("seed").value||".";$("phase").textContent=E.ph[E.cycle%E.ph.length];$("cycle").textContent=E.cycle;$("wobble").textContent=E.wobble.toFixed(3);$("prune").textContent=E.short.length;$("long").textContent=E.long.length+" · "+E.wit}
+function resize(){let r=cv.getBoundingClientRect(),d=Math.max(1,devicePixelRatio||1);cv.width=r.width*d;cv.height=r.height*d;ctx.setTransform(d,0,0,d,0,0)}new ResizeObserver(resize).observe(cv);resize();
+function line(pts,w=1,a=.75){ctx.save();ctx.strokeStyle="#222";ctx.globalAlpha=a;ctx.lineWidth=w;ctx.lineCap="round";ctx.lineJoin="round";for(let p=0;p<3;p++){ctx.beginPath();pts.forEach(([x,y],i)=>{let jx=(Math.random()-.5)*1.7,jy=(Math.random()-.5)*1.7;i?ctx.lineTo(x+jx,y+jy):ctx.moveTo(x+jx,y+jy)});ctx.stroke()}ctx.restore()}
+function text(t,x,y,s=20){ctx.save();ctx.font=s+'px "Courier New",monospace';ctx.textAlign="center";ctx.fillStyle="#222";ctx.globalAlpha=.9;ctx.fillText(t,x+(Math.random()-.5),y+(Math.random()-.5));ctx.restore()}
+function brace(x1,x2,y,l){let m=(x1+x2)/2;line([[x1,y],[x1+8,y+12],[m-18,y+18],[m,y+26],[m+18,y+18],[x2-8,y+12],[x2,y]],1,.55);text(l,m,y+50,12)}
+function draw(){let w=cv.clientWidth,h=cv.clientHeight;ctx.clearRect(0,0,w,h);let y=h*.38,xs=[w*.1,w*.25,w*.39,w*.5,w*.61,w*.75,w*.9];let pts=xs.map((x,i)=>[x,y+Math.sin((E.cycle+i)*.7)*18]);line(pts,2.2,.35);E.sig.forEach((m,i)=>{let on=i===E.pos;text(m,xs[i],y+(on?-9:0),on?42:38);if(on){ctx.save();ctx.globalAlpha=.35;ctx.beginPath();ctx.ellipse(xs[i],y-12,58,38,Math.sin(E.cycle*.2)*.08,0,Math.PI*2);ctx.stroke();ctx.restore()}});["5 up shell","3×3×3 domain","diverge birth","witness hinge","converge death","mirror 3×3×3","5 down shell"].forEach((l,i)=>brace(xs[i]-55,xs[i]+55,y+48,l));let cy=h*.78,words=["contain","expand","cross","compress","re-contain"],x0=w*.17,g=w*.16;for(let i=0;i<words.length;i++){text(words[i],x0+i*g,cy,18);if(i<words.length-1)line([[x0+i*g+55,cy-6],[x0+(i+1)*g-55,cy-6]],1.4,.75)}line([[w*.22,cy+38],[w*.32,cy+60],[w*.5,cy+68],[w*.68,cy+60],[w*.78,cy+38]],1.1,.7);text("life / death / birth · Mandel wide-narrow-rebirth · short prunes, long audits",w/2,cy+100,15);requestAnimationFrame(draw)}
+$("step").onclick=step;$("ground").onclick=ground;$("audit").onclick=audit;$("run").onclick=e=>{E.run=!E.run;e.target.textContent=E.run?"PAUSE":"RUN"};setInterval(()=>{if(E.run)step()},240);ui();draw();
+</script>
+</body>
+</html>

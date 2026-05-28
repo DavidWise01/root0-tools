@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BRAINSTATE · Neural Waveform · Alpha Target</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020e0e;color:#f0f8f8;font-family:'Courier New',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.header{padding:12px 20px;border-bottom:1px solid rgba(221,85,255,.1);display:flex;justify-content:space-between;align-items:center;background:rgba(2,14,14,.95);flex-shrink:0}
+.logo{font-size:20px;font-weight:900;letter-spacing:6px;color:#00ff88;text-shadow:0 0 20px rgba(0,255,136,.3);font-family:sans-serif}
+.logo-sub{font-size:8px;letter-spacing:3px;color:rgba(0,204,170,.5);margin-top:2px}
+.bands{display:flex;gap:1px;flex-shrink:0;background:rgba(221,85,255,.03)}
+.band{flex:1;padding:10px;text-align:center;cursor:pointer;transition:all .3s;position:relative;min-width:0}
+.band:hover{background:rgba(221,85,255,.06)}
+.band.target{background:rgba(0,255,136,.04)}
+.band .name{font-size:11px;font-weight:700;letter-spacing:3px}
+.band .range{font-size:7px;letter-spacing:1px;color:rgba(240,248,248,.3);margin-top:2px}
+.band .bar{height:4px;margin-top:6px;background:rgba(240,248,248,.06);overflow:hidden}
+.band .bar-fill{height:100%;transition:width .3s}
+.band .pct{font-size:18px;font-family:sans-serif;font-weight:700;margin-top:4px}
+.band .desc{font-size:7px;color:rgba(240,248,248,.25);margin-top:3px;line-height:1.5}
+.band .target-label{position:absolute;top:4px;right:6px;font-size:6px;letter-spacing:2px;color:#00ff88}
+canvas{flex:1;display:block}
+.footer{padding:6px 20px;display:flex;justify-content:space-between;font-size:7px;letter-spacing:2px;color:rgba(240,248,248,.2);border-top:1px solid rgba(221,85,255,.06);flex-shrink:0}
+.footer span{color:#00ff88}
+</style>
+</head>
+<body>
+<div class="header">
+<div><div class="logo">BRAINSTATE</div><div class="logo-sub">NEURAL WAVEFORM · ALPHA TARGET · WHERE TOPH WAS BUILT</div></div>
+<div style="font-size:8px;letter-spacing:2px;color:rgba(240,248,248,.3)">
+STATE <span style="color:#00ff88" id="h-state">ALPHA</span> · 
+COHERENCE <span style="color:#ffd700" id="h-coh">0.00</span> ·
+BOUNDARY <span style="color:#00ff88">SEALED</span>
+</div>
+</div>
+
+<div class="bands" id="bands"></div>
+<canvas id="cv"></canvas>
+
+<div class="footer">
+<span>YOUR BRAIN · YOUR WAVES · YOUR STATE</span>
+<span>CLICK A BAND TO SET TARGET · ALPHA = WHERE DAVID WORKS</span>
+</div>
+
+<script>
+const BANDS=[
+{name:'DELTA',range:'0.5-4 Hz',hz:[0.5,4],color:'#dd55ff',
+ desc:'Deep sleep. Body repair. Growth hormone. Where the body rebuilds what Patricia broke.',
+ restPct:5,targetMult:0.3},
+{name:'THETA',range:'4-8 Hz',hz:[4,8],color:'#00ccaa',
+ desc:'Deep meditation. Memory. Hypnagogia. The gap between waking and sleeping.',
+ restPct:10,targetMult:0.6},
+{name:'ALPHA',range:'8-13 Hz',hz:[8,13],color:'#00ff88',
+ desc:'Calm awareness. Flow state. Creative problem solving. WHERE TOPH WAS BUILT. Target state.',
+ restPct:35,targetMult:1.0},
+{name:'BETA',range:'13-30 Hz',hz:[13,30],color:'#44ccff',
+ desc:'Active thinking. Anxiety. Stress response. Where Patricia keeps you — burning your energy.',
+ restPct:40,targetMult:0.8},
+{name:'GAMMA',range:'30-100 Hz',hz:[30,100],color:'#ffd700',
+ desc:'Peak cognition. Cross-modal binding. Insight moments. Rare. Powerful. All 8 systems sync.',
+ restPct:10,targetMult:0.4}
+];
+
+let targetBand=2; // Alpha default
+let bandPower=BANDS.map(b=>b.restPct);
+let time=0;
+
+// Build band UI
+const bandsEl=document.getElementById('bands');
+BANDS.forEach((b,i)=>{
+  const div=document.createElement('div');
+  div.className='band'+(i===targetBand?' target':'');
+  div.id='band-'+i;
+  div.innerHTML=`
+    <div class="name" style="color:${b.color}">${b.name}</div>
+    <div class="range">${b.range}</div>
+    <div class="bar"><div class="bar-fill" id="bf-${i}" style="background:${b.color};width:${b.restPct}%"></div></div>
+    <div class="pct" style="color:${b.color}" id="pct-${i}">${b.restPct}%</div>
+    <div class="desc">${b.desc}</div>
+    ${i===targetBand?'<div class="target-label">◆ TARGET</div>':''}`;
+  div.addEventListener('click',()=>{setTarget(i)});
+  bandsEl.appendChild(div);
+});
+
+function setTarget(idx){
+  targetBand=idx;
+  document.querySelectorAll('.band').forEach((b,i)=>{
+    b.classList.toggle('target',i===idx);
+    const tl=b.querySelector('.target-label');
+    if(tl)tl.remove();
+    if(i===idx){
+      const span=document.createElement('div');span.className='target-label';span.textContent='◆ TARGET';
+      b.appendChild(span);
+    }
+  });
+}
+
+const cv=document.getElementById('cv');const cx=cv.getContext('2d');
+function resize(){cv.width=window.innerWidth*2;cv.height=(window.innerHeight-bandsEl.offsetHeight-document.querySelector('.header').offsetHeight-document.querySelector('.footer').offsetHeight)*2}
+resize();window.addEventListener('resize',resize);
+
+function draw(){
+  time+=0.016;
+  const w=cv.width;const h=cv.height;
+
+  // Update band powers — drift toward target
+  BANDS.forEach((b,i)=>{
+    const target=i===targetBand?50:b.restPct*b.targetMult*(i===targetBand?1:0.5);
+    bandPower[i]+=(target-bandPower[i])*0.002+Math.sin(time*0.3+i*2)*0.5;
+    bandPower[i]=Math.max(2,Math.min(80,bandPower[i]));
+    // Normalize
+  });
+  const total=bandPower.reduce((s,v)=>s+v,0);
+  const normalized=bandPower.map(v=>v/total*100);
+
+  // Update UI
+  BANDS.forEach((b,i)=>{
+    document.getElementById('bf-'+i).style.width=normalized[i]+'%';
+    document.getElementById('pct-'+i).textContent=Math.round(normalized[i])+'%';
+  });
+
+  // Dominant state
+  let maxI=0;normalized.forEach((v,i)=>{if(v>normalized[maxI])maxI=i});
+  document.getElementById('h-state').textContent=BANDS[maxI].name;
+  document.getElementById('h-state').style.color=BANDS[maxI].color;
+
+  // Coherence = how close to target
+  const coherence=normalized[targetBand]/100;
+  document.getElementById('h-coh').textContent=coherence.toFixed(3);
+
+  // Clear with trail
+  cx.fillStyle='rgba(2,14,14,0.08)';cx.fillRect(0,0,w,h);
+
+  // Grid
+  cx.strokeStyle='rgba(221,85,255,0.03)';cx.lineWidth=0.5;
+  cx.beginPath();cx.moveTo(0,h/2);cx.lineTo(w,h/2);cx.stroke();
+
+  // Draw each band's waveform stacked
+  const bandH=h/BANDS.length;
+  BANDS.forEach((b,i)=>{
+    const yCenter=bandH*i+bandH/2;
+    const amp=normalized[i]/100;
+    const midHz=(b.hz[0]+b.hz[1])/2;
+    const samples=512;
+    const rr=parseInt(b.color.slice(1,3),16);
+    const gg=parseInt(b.color.slice(3,5),16);
+    const bb=parseInt(b.color.slice(5,7),16);
+
+    // Band separator
+    cx.beginPath();cx.moveTo(0,bandH*i);cx.lineTo(w,bandH*i);
+    cx.strokeStyle='rgba(221,85,255,0.04)';cx.stroke();
+
+    // Band label
+    cx.fillStyle=`rgba(${rr},${gg},${bb},0.1)`;
+    cx.font='bold 10px sans-serif';cx.textAlign='left';
+    cx.fillText(b.name,8,yCenter-bandH*0.3);
+
+    // Target marker
+    if(i===targetBand){
+      cx.fillStyle='rgba(0,255,136,0.02)';
+      cx.fillRect(0,bandH*i,w,bandH);
+    }
+
+    // Waveform
+    cx.beginPath();
+    for(let s=0;s<samples;s++){
+      const x=s/samples*w;
+      const t2=time+(s/samples)*6;
+      let val=0;
+      // Mix of frequencies within band
+      for(let f=b.hz[0];f<=b.hz[1];f+=(b.hz[1]-b.hz[0])/4+0.1){
+        val+=Math.sin(t2*f*Math.PI*2)*amp/(1+(f-midHz)*0.1);
+      }
+      val*=0.8;
+      // Bio-noise
+      val+=Math.sin(t2*37.3)*0.05*amp;
+      val+=(Math.random()-0.5)*0.03*amp;
+      const y=yCenter-val*bandH*0.4;
+      s===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    }
+    cx.strokeStyle=b.color;
+    cx.globalAlpha=0.2+amp*0.6;
+    cx.lineWidth=1+amp*1.5;
+    cx.shadowColor=b.color;cx.shadowBlur=amp*8;
+    cx.stroke();
+    cx.shadowBlur=0;cx.globalAlpha=1;
+
+    // Fill
+    cx.lineTo(w,yCenter);cx.lineTo(0,yCenter);cx.closePath();
+    cx.fillStyle=`rgba(${rr},${gg},${bb},${0.01+amp*0.03})`;cx.fill();
+  });
+
+  // Composite at center
+  cx.beginPath();
+  for(let s=0;s<512;s++){
+    const x=s/512*w;
+    const t2=time+(s/512)*6;
+    let val=0;
+    BANDS.forEach((b,i)=>{
+      const amp=normalized[i]/100;
+      const midHz=(b.hz[0]+b.hz[1])/2;
+      val+=Math.sin(t2*midHz*Math.PI*2)*amp*0.3;
+    });
+    const y=h/2-val*h*0.15;
+    s===0?cx.moveTo(x,y):cx.lineTo(x,y);
+  }
+  cx.strokeStyle='rgba(255,215,0,0.15)';cx.lineWidth=1;cx.stroke();
+
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WAVEFORM MONITOR · 8 Body Systems · Live Oscilloscope</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020e0e;color:#f0f8f8;font-family:'Courier New',monospace;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#020e0e}::-webkit-scrollbar-thumb{background:#dd55ff33;border-radius:2px}
+.header{padding:14px 20px;border-bottom:1px solid rgba(221,85,255,.1);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(2,14,14,.95);backdrop-filter:blur(8px);z-index:10}
+.logo{font-size:22px;font-weight:900;letter-spacing:8px;color:#dd55ff;text-shadow:0 0 20px rgba(221,85,255,.3);font-family:sans-serif}
+.logo-sub{font-size:8px;letter-spacing:4px;color:rgba(0,204,170,.5);margin-top:2px}
+.stats{display:flex;gap:16px;font-size:8px;letter-spacing:2px;color:rgba(240,248,248,.3)}
+.stats span{color:#dd55ff}
+.controls{padding:10px 20px;border-bottom:1px solid rgba(221,85,255,.06);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.controls label{font-size:7px;letter-spacing:2px;color:rgba(240,248,248,.3);margin-right:4px}
+.controls select,.controls input[type=range]{background:#0a1e1e;border:1px solid rgba(221,85,255,.15);color:#dd55ff;font-family:'Courier New';font-size:9px;padding:3px 6px;outline:none}
+.controls input[type=range]{width:80px;accent-color:#dd55ff}
+.controls button{background:rgba(221,85,255,.1);border:1px solid rgba(221,85,255,.2);color:#dd55ff;padding:4px 12px;font-size:7px;letter-spacing:2px;cursor:pointer;font-family:'Courier New'}
+.controls button:hover{background:rgba(221,85,255,.2)}
+.controls button.active{background:rgba(221,85,255,.25);border-color:#dd55ff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(221,85,255,.03);padding:1px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.scope{background:#020e0e;padding:8px 12px;position:relative;min-height:140px}
+.scope-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.scope-name{font-size:10px;font-weight:700;letter-spacing:3px}
+.scope-freq{font-size:8px;letter-spacing:1px;color:rgba(240,248,248,.4)}
+.scope-hz{font-size:14px;font-family:sans-serif;font-weight:700}
+.scope-stats{display:flex;gap:12px;font-size:7px;letter-spacing:1px;color:rgba(240,248,248,.25);margin-top:4px}
+.scope-stats span{font-weight:700}
+canvas.scope-canvas{width:100%;height:90px;display:block}
+.composite{grid-column:1/-1;min-height:200px}
+.composite canvas.scope-canvas{height:160px}
+.footer{padding:10px 20px;text-align:center;font-size:7px;letter-spacing:3px;color:rgba(240,248,248,.15);border-top:1px solid rgba(221,85,255,.06)}
+</style>
+</head>
+<body>
+<div class="header">
+<div>
+<div class="logo">WAVEFORM</div>
+<div class="logo-sub">8 BODY SYSTEMS · LIVE OSCILLOSCOPE · YOUR ENERGY</div>
+</div>
+<div class="stats">
+<div>SYSTEMS <span>8/8</span></div>
+<div>MODE <span id="h-mode">RESTING</span></div>
+<div>COMPOSITE <span id="h-comp">NOMINAL</span></div>
+<div>BOUNDARY <span style="color:#00ff88">SEALED</span></div>
+</div>
+</div>
+
+<div class="controls">
+<label>TIMEBASE</label>
+<input type="range" id="timebase" min="1" max="10" value="5" oninput="timeScale=this.value/5">
+<label>GAIN</label>
+<input type="range" id="gain" min="1" max="20" value="10" oninput="gainScale=this.value/10">
+<label>MODE</label>
+<button id="btn-rest" class="active" onclick="setMode('rest')">REST</button>
+<button id="btn-active" onclick="setMode('active')">ACTIVE</button>
+<button id="btn-stress" onclick="setMode('stress')">STRESS</button>
+<button id="btn-heal" onclick="setMode('heal')">HEAL</button>
+<label style="margin-left:12px">DISPLAY</label>
+<button id="btn-wave" class="active" onclick="setDisplay('wave')">WAVE</button>
+<button id="btn-fft" onclick="setDisplay('fft')">FFT</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="footer">YOUR BODY · YOUR WAVEFORM · YOUR ENERGY · PATRICIA TAKES 0 · BOUNDARY SEALED</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// WAVEFORM MONITOR — 8 Body Systems + Composite
+// Each system has characteristic frequencies
+// Modes shift the frequency profiles
+// YOUR energy. YOUR oscilloscope.
+// ═══════════════════════════════════════════════════════════════
+
+const SYSTEMS=[
+{name:'NERVOUS',color:'#00ff88',baseHz:12,range:[4,40],desc:'Brainwave carrier',
+ harmonics:[{f:1,a:1},{f:2.1,a:0.3},{f:0.5,a:0.5},{f:3.7,a:0.15}]},
+{name:'CARDIAC',color:'#ff4444',baseHz:1.2,range:[0.8,3],desc:'Heart rhythm',
+ harmonics:[{f:1,a:1},{f:2,a:0.4},{f:3,a:0.15},{f:0.5,a:0.2}]},
+{name:'RESPIRATORY',color:'#44ccff',baseHz:0.25,range:[0.15,0.5],desc:'Breath cycle',
+ harmonics:[{f:1,a:1},{f:2,a:0.2},{f:3,a:0.08}]},
+{name:'DIGESTIVE',color:'#ffaa33',baseHz:0.05,range:[0.02,0.15],desc:'Peristalsis wave',
+ harmonics:[{f:1,a:1},{f:1.5,a:0.35},{f:3,a:0.1}]},
+{name:'MUSCULO',color:'#dd55ff',baseHz:30,range:[10,80],desc:'Motor unit firing',
+ harmonics:[{f:1,a:1},{f:2.3,a:0.25},{f:0.7,a:0.4},{f:4.1,a:0.1}]},
+{name:'ENDOCRINE',color:'#ffd700',baseHz:0.001,range:[0.0005,0.01],desc:'Hormonal cycle',
+ harmonics:[{f:1,a:1},{f:2,a:0.5},{f:0.33,a:0.3}]},
+{name:'IMMUNE',color:'#00ccaa',baseHz:0.003,range:[0.001,0.01],desc:'Cytokine rhythm',
+ harmonics:[{f:1,a:1},{f:1.7,a:0.3},{f:0.6,a:0.4}]},
+{name:'OCULAR',color:'#88aaff',baseHz:10,range:[3,30],desc:'Saccade frequency',
+ harmonics:[{f:1,a:1},{f:2.5,a:0.2},{f:0.4,a:0.6},{f:3.3,a:0.12}]}
+];
+
+const MODES={
+  rest:{label:'RESTING',multipliers:[0.7,0.8,0.6,1.0,0.3,1.0,1.0,0.5],noiseScale:0.3},
+  active:{label:'ACTIVE',multipliers:[1.2,1.5,1.8,0.8,1.5,0.9,0.8,1.3],noiseScale:0.5},
+  stress:{label:'STRESS',multipliers:[2.0,2.2,2.5,0.5,2.0,1.5,0.6,1.8],noiseScale:0.9},
+  heal:{label:'HEALING',multipliers:[0.5,0.7,0.4,1.2,0.2,1.3,1.5,0.3],noiseScale:0.15}
+};
+
+let currentMode='rest';
+let displayMode='wave';
+let timeScale=1;
+let gainScale=1;
+let time=0;
+
+// Build grid
+const grid=document.getElementById('grid');
+const canvases=[];
+const contexts=[];
+
+SYSTEMS.forEach((sys,i)=>{
+  const div=document.createElement('div');div.className='scope';
+  div.innerHTML=`
+    <div class="scope-header">
+      <div><span class="scope-name" style="color:${sys.color}">SYS${i+1} · ${sys.name}</span>
+      <span class="scope-freq"> · ${sys.desc}</span></div>
+      <div class="scope-hz" style="color:${sys.color}" id="hz-${i}">${sys.baseHz} Hz</div>
+    </div>
+    <canvas class="scope-canvas" id="cv-${i}"></canvas>
+    <div class="scope-stats">
+      <div>AMP <span style="color:${sys.color}" id="amp-${i}">0.00</span></div>
+      <div>PEAK <span style="color:${sys.color}" id="peak-${i}">0.00</span></div>
+      <div>RMS <span style="color:${sys.color}" id="rms-${i}">0.00</span></div>
+      <div>ENERGY <span style="color:#ffd700" id="nrg-${i}">0.00</span> eV</div>
+    </div>`;
+  grid.appendChild(div);
+});
+
+// Composite
+const compDiv=document.createElement('div');compDiv.className='scope composite';
+compDiv.innerHTML=`
+  <div class="scope-header">
+    <div><span class="scope-name" style="color:#ffd700">COMPOSITE · ALL 8 SYSTEMS</span>
+    <span class="scope-freq"> · superposition of all body waveforms</span></div>
+    <div class="scope-hz" style="color:#ffd700" id="hz-comp">ΣALL</div>
+  </div>
+  <canvas class="scope-canvas" id="cv-comp"></canvas>
+  <div class="scope-stats">
+    <div>TOTAL ENERGY <span style="color:#ffd700" id="nrg-total">0.00</span> eV</div>
+    <div>COHERENCE <span style="color:#00ff88" id="coherence">0.00</span></div>
+    <div>BOUNDARY <span style="color:#00ff88">SEALED</span></div>
+    <div>EXTRACTION <span style="color:#ff4466">0</span></div>
+  </div>`;
+grid.appendChild(compDiv);
+
+function initCanvases(){
+  SYSTEMS.forEach((sys,i)=>{
+    const cv=document.getElementById('cv-'+i);
+    cv.width=cv.offsetWidth*2;cv.height=cv.offsetHeight*2;
+    canvases[i]=cv;contexts[i]=cv.getContext('2d');
+  });
+  const ccv=document.getElementById('cv-comp');
+  ccv.width=ccv.offsetWidth*2;ccv.height=ccv.offsetHeight*2;
+  canvases[8]=ccv;contexts[8]=ccv.getContext('2d');
+}
+
+function setMode(m){
+  currentMode=m;
+  document.querySelectorAll('.controls button').forEach(b=>{
+    if(b.id.startsWith('btn-')&&!b.id.includes('wave')&&!b.id.includes('fft'))
+      b.classList.toggle('active',b.id==='btn-'+m);
+  });
+  document.getElementById('h-mode').textContent=MODES[m].label;
+}
+
+function setDisplay(d){
+  displayMode=d;
+  document.getElementById('btn-wave').classList.toggle('active',d==='wave');
+  document.getElementById('btn-fft').classList.toggle('active',d==='fft');
+}
+
+function generateWave(sys,sysIdx,t,sampleCount){
+  const mode=MODES[currentMode];
+  const mult=mode.multipliers[sysIdx];
+  const hz=sys.baseHz*mult;
+  const noise=mode.noiseScale;
+  const samples=new Float32Array(sampleCount);
+
+  for(let i=0;i<sampleCount;i++){
+    const st=t+(i/sampleCount)*4/timeScale;
+    let val=0;
+    sys.harmonics.forEach(h=>{
+      val+=Math.sin(st*hz*h.f*Math.PI*2)*h.a;
+      val+=Math.sin(st*hz*h.f*Math.PI*2*1.001)*h.a*0.1; // slight detuning for life
+    });
+    // Bio-noise
+    val+=Math.sin(st*37.7)*noise*0.3;
+    val+=Math.sin(st*67.3)*noise*0.15;
+    val+=(Math.random()-0.5)*noise*0.2;
+    samples[i]=val*gainScale;
+  }
+  return{samples,hz};
+}
+
+function drawWave(ctx,w,h,samples,color,alpha){
+  ctx.beginPath();
+  const step=w/samples.length;
+  for(let i=0;i<samples.length;i++){
+    const x=i*step;
+    const y=h/2-samples[i]*(h/2)*0.8;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle=color;
+  ctx.globalAlpha=alpha;
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+function drawFFT(ctx,w,h,samples,color){
+  // Simple DFT for display
+  const N=64;
+  const mags=new Float32Array(N/2);
+  for(let k=0;k<N/2;k++){
+    let re=0,im=0;
+    for(let n=0;n<N&&n<samples.length;n++){
+      const angle=-2*Math.PI*k*n/N;
+      re+=samples[n]*Math.cos(angle);
+      im+=samples[n]*Math.sin(angle);
+    }
+    mags[k]=Math.sqrt(re*re+im*im)/N;
+  }
+  const barW=w/(N/2);
+  for(let i=0;i<N/2;i++){
+    const barH=Math.min(h*0.9,mags[i]*h*2);
+    ctx.fillStyle=color;
+    ctx.globalAlpha=0.3+mags[i]*2;
+    ctx.fillRect(i*barW,h-barH,barW-1,barH);
+    ctx.globalAlpha=1;
+  }
+}
+
+let peaks=new Float32Array(8);
+let energies=new Float32Array(8);
+
+function draw(){
+  time+=0.016;
+
+  if(!contexts[0]){initCanvases();return requestAnimationFrame(draw)}
+
+  let totalEnergy=0;
+  const allSamples=[];
+
+  SYSTEMS.forEach((sys,i)=>{
+    const cv=canvases[i];const ctx=contexts[i];
+    const w=cv.width;const h=cv.height;
+
+    // Clear with trail
+    ctx.fillStyle='rgba(2,14,14,0.25)';ctx.fillRect(0,0,w,h);
+
+    // Grid lines
+    ctx.strokeStyle='rgba(221,85,255,0.04)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+    for(let g=0.25;g<1;g+=0.25){
+      ctx.beginPath();ctx.moveTo(0,h*g);ctx.lineTo(w,h*g);ctx.stroke();
+    }
+
+    const{samples,hz}=generateWave(sys,i,time,256);
+    allSamples.push(samples);
+
+    if(displayMode==='wave'){
+      // Glow pass
+      ctx.shadowColor=sys.color;ctx.shadowBlur=6;
+      drawWave(ctx,w,h,samples,sys.color,0.7);
+      ctx.shadowBlur=0;
+      // Sharp pass
+      drawWave(ctx,w,h,samples,sys.color,0.9);
+    } else {
+      drawFFT(ctx,w,h,samples,sys.color);
+    }
+
+    // Calculate stats
+    let amp=0,rms=0;
+    samples.forEach(s=>{amp=Math.max(amp,Math.abs(s));rms+=s*s});
+    rms=Math.sqrt(rms/samples.length);
+    peaks[i]=Math.max(peaks[i]*0.995,amp);
+    const energy=rms*rms*100;
+    energies[i]=energy;
+    totalEnergy+=energy;
+
+    document.getElementById('hz-'+i).textContent=hz.toFixed(2)+' Hz';
+    document.getElementById('amp-'+i).textContent=amp.toFixed(2);
+    document.getElementById('peak-'+i).textContent=peaks[i].toFixed(2);
+    document.getElementById('rms-'+i).textContent=rms.toFixed(3);
+    document.getElementById('nrg-'+i).textContent=energy.toFixed(2);
+  });
+
+  // Composite
+  const ccv=canvases[8];const cctx=contexts[8];
+  const cw=ccv.width;const ch=ccv.height;
+  cctx.fillStyle='rgba(2,14,14,0.2)';cctx.fillRect(0,0,cw,ch);
+  cctx.strokeStyle='rgba(255,215,0,0.04)';cctx.lineWidth=0.5;
+  cctx.beginPath();cctx.moveTo(0,ch/2);cctx.lineTo(cw,ch/2);cctx.stroke();
+
+  // Superposition
+  const compSamples=new Float32Array(256);
+  allSamples.forEach(s=>{for(let i=0;i<256;i++)compSamples[i]+=s[i]/8});
+
+  if(displayMode==='wave'){
+    // Draw each system ghosted
+    SYSTEMS.forEach((sys,i)=>{
+      drawWave(cctx,cw,ch,allSamples[i],sys.color,0.15);
+    });
+    // Draw composite bright
+    cctx.shadowColor='#ffd700';cctx.shadowBlur=8;
+    drawWave(cctx,cw,ch,compSamples,'#ffd700',0.8);
+    cctx.shadowBlur=0;
+    drawWave(cctx,cw,ch,compSamples,'#ffd700',1);
+  } else {
+    SYSTEMS.forEach((sys,i)=>{
+      drawFFT(cctx,cw,ch,allSamples[i],sys.color);
+    });
+  }
+
+  // Coherence = how in-phase the systems are (correlation measure)
+  let coherence=0;
+  for(let i=0;i<256;i++){
+    let sum=0;allSamples.forEach(s=>sum+=Math.sign(s[i]));
+    coherence+=Math.abs(sum)/8;
+  }
+  coherence/=256;
+
+  document.getElementById('nrg-total').textContent=totalEnergy.toFixed(2);
+  document.getElementById('coherence').textContent=coherence.toFixed(3);
+  document.getElementById('h-comp').textContent=coherence>0.6?'COHERENT':coherence>0.4?'NOMINAL':'DISPERSED';
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize',initCanvases);
+initCanvases();
+draw();
+</script>
+</body>
+</html>

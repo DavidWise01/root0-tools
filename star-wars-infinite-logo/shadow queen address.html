@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dc3 · shadow queen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    html, body {
+        height: 100%;
+        background: #000000;
+    }
+    body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #000000;
+        font-family: 'JetBrains Mono', monospace;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow: hidden;
+    }
+    .poster {
+        width: min(100vmin, 1920px);
+        height: min(100vmin, 1920px);
+        max-width: 1920px;
+        max-height: 1920px;
+        background: #000000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35em;
+    }
+    .line {
+        color: #C8A830;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 400;
+        font-size: 2.2rem;
+        letter-spacing: 0.05em;
+        line-height: 1;
+        text-align: center;
+        white-space: pre;
+        text-shadow: 0 0 10px rgba(200, 168, 48, 0.35),
+                     0 0 22px rgba(200, 168, 48, 0.18),
+                     0 0 40px rgba(200, 168, 48, 0.1);
+        transition: opacity 0.3s ease;
+        user-select: none;
+    }
+    .line:nth-child(1),
+    .line:nth-child(11) { opacity: 0.5; }
+    .line:nth-child(2),
+    .line:nth-child(10) { opacity: 0.6; }
+    .line:nth-child(3),
+    .line:nth-child(9) { opacity: 0.7; }
+    .line:nth-child(4),
+    .line:nth-child(8) { opacity: 0.8; }
+    .line:nth-child(5),
+    .line:nth-child(7) { opacity: 0.9; }
+    
+    .line.middle {
+        font-size: 3.2rem;
+        font-weight: 500;
+        opacity: 1;
+        text-shadow: 0 0 14px rgba(200, 168, 48, 0.95),
+                     0 0 28px rgba(200, 168, 48, 0.7),
+                     0 0 56px rgba(200, 168, 48, 0.4),
+                     0 0 90px rgba(200, 168, 48, 0.25);
+    }
+    .footer {
+        color: #C8A830;
+        font-size: 1rem;
+        letter-spacing: 0.05em;
+        opacity: 0.7;
+        margin-top: 3rem;
+        text-align: center;
+        text-shadow: 0 0 8px rgba(200, 168, 48, 0.3);
+        user-select: none;
+    }
+
+    @media (max-width: 768px) {
+        .line {
+            font-size: 1.35rem;
+            gap: 0.3em;
+        }
+        .line.middle {
+            font-size: 1.95rem;
+        }
+        .footer {
+            font-size: 0.85rem;
+            margin-top: 2.25rem;
+        }
+        .stack {
+            gap: 0.28em;
+            transform: scale(0.92);
+        }
+    }
+    @media (max-width: 480px) {
+        .line {
+            font-size: 1.05rem;
+        }
+        .line.middle {
+            font-size: 1.5rem;
+        }
+        .footer {
+            font-size: 0.75rem;
+            margin-top: 2rem;
+        }
+        .stack {
+            gap: 0.25em;
+            transform: scale(0.88);
+        }
+    }
+    @media (min-width: 1920px) {
+        .poster {
+            width: 1920px;
+            height: 1920px;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="poster">
+        <div class="stack">
+            <div class="line">)))) (.) ((((</div>
+            <div class="line">))))) (.) (((((</div>
+            <div class="line">)))))) (.) ((((((</div>
+            <div class="line">))))))) (.) (((((((</div>
+            <div class="line">)))))))) (.) ((((((((</div>
+            <div class="line middle">))))))))) (.) ((((((((</div>
+            <div class="line">)))))))))) (.) ((((((((((</div>
+            <div class="line">))))))))))) (.) (((((((((((</div>
+            <div class="line">)))))))))))) (.) ((((((((((((</div>
+            <div class="line">))))))))))))) (.) (((((((((((((</div>
+            <div class="line">)))))))))))))) (.) ((((((((((((((</div>
+        </div>
+        <div class="footer">dc3 · 000 · shadow queen</div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>How AI sees time</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --surface: #ffffff;
+    --surface-2: #f1efe8;
+    --text: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(120, 117, 110, 0.18);
+    --border-strong: rgba(120, 117, 110, 0.4);
+    --purple: #534ab7;
+    --coral: #993c1d;
+    --amber: #ba7517;
+    --teal: #0f6e56;
+    --blue: #185fa5;
+    --pink: #993556;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #232321;
+      --surface-2: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(241, 239, 232, 0.12);
+      --border-strong: rgba(241, 239, 232, 0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 4px; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 20px; }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .panel-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  .ai-card {
+    padding: 18px;
+    border-radius: 12px;
+    border: 0.5px solid var(--border);
+  }
+  .ai-blind {
+    background: var(--surface);
+    border-left: 3px solid var(--coral);
+  }
+  .ai-aware {
+    background: var(--surface);
+    border-left: 3px solid var(--teal);
+  }
+  .ai-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ai-title { font-size: 16px; font-weight: 500; margin: 0 0 10px; }
+  .context-box {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 12px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .context-box .key { color: var(--purple); }
+  .context-box .val { color: var(--text); }
+  .context-box .missing { color: var(--coral); font-style: italic; }
+  .response {
+    font-size: 13px;
+    color: var(--text);
+    margin: 10px 0;
+    line-height: 1.65;
+    background: var(--surface-2);
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+  .response strong { color: var(--text); }
+  textarea, input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  textarea {
+    min-height: 80px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    resize: vertical;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 10px 0 6px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  button {
+    padding: 9px 18px; font-size: 13px;
+    font-family: inherit;
+    background: var(--text); color: var(--bg);
+    border: 0.5px solid var(--text);
+    border-radius: 8px; cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.12s;
+  }
+  button:hover { opacity: 0.85; }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border-strong);
+  }
+  .button-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .live-clock {
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    color: var(--purple);
+    font-weight: 500;
+  }
+  details {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    list-style: none;
+  }
+  summary::before { content: "▸ "; color: var(--text-secondary); }
+  details[open] summary::before { content: "▾ "; }
+  .details-body {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-top: 8px;
+  }
+  .scenario-tabs {
+    display: flex; gap: 4px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .scenario-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .scenario-tab:hover { background: var(--surface-2); }
+  .scenario-tab.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>How AI sees time</h1>
+  <p class="subtitle">Two versions of the same AI, same question. One has time injected at preboot. One doesn't. Watch what changes.</p>
+
+  <div class="card">
+    <p class="panel-label">Right now</p>
+    <p style="margin: 0;">Your local time: <span class="live-clock" id="liveClock">—</span></p>
+    <p style="margin: 6px 0 0; font-size: 13px; color: var(--text-secondary);">This is what your browser knows. An AI without injection doesn't see this.</p>
+  </div>
+
+  <div class="card">
+    <p class="panel-label">Try a question</p>
+    <label for="userQuestion">What would you ask?</label>
+    <textarea id="userQuestion" placeholder="e.g., I've been working on this for a while, should I take a break?">I've been working on this for a while, should I take a break?</textarea>
+
+    <p class="panel-label" style="margin-top: 16px;">Pick a scenario (sets time-since-last-message and time-of-day)</p>
+    <div class="scenario-tabs">
+      <button class="scenario-tab active" data-scenario="late-night">Late night, 4 hours in</button>
+      <button class="scenario-tab" data-scenario="morning">Morning, 20 min in</button>
+      <button class="scenario-tab" data-scenario="afternoon-long">Afternoon, 6 hours in</button>
+      <button class="scenario-tab" data-scenario="custom">Custom</button>
+    </div>
+
+    <div id="customControls" style="display: none;">
+      <label for="customTime">User's local time</label>
+      <input type="text" id="customTime" placeholder="e.g., 2:47 AM" value="2:47 AM">
+      <label for="customElapsed">Time since last user message</label>
+      <input type="text" id="customElapsed" placeholder="e.g., 4 hours 12 minutes" value="4 hours 12 minutes">
+    </div>
+
+    <div class="button-row">
+      <button id="btnRun">Show both responses</button>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="ai-card ai-blind">
+      <p class="ai-label">AI without time injection</p>
+      <h3 class="ai-title">What it sees</h3>
+      <div class="context-box" id="blindContext">
+<span class="key">user_message:</span> <span class="val">"…"</span>
+<span class="key">conversation_token_count:</span> <span class="val">[a number, but no clock context]</span>
+<span class="key">current_time:</span> <span class="missing">— not available —</span>
+<span class="key">time_since_last_message:</span> <span class="missing">— not available —</span>
+      </div>
+      <h3 class="ai-title">How it might respond</h3>
+      <div class="response" id="blindResponse">
+        Click "Show both responses" to see.
+      </div>
+      <p class="note">Inferences from token count alone are guesses dressed as observations.</p>
+    </div>
+
+    <div class="ai-card ai-aware">
+      <p class="ai-label">AI with time injection at preboot</p>
+      <h3 class="ai-title">What it sees</h3>
+      <div class="context-box" id="awareContext">
+<span class="key">user_message:</span> <span class="val">"…"</span>
+<span class="key">conversation_token_count:</span> <span class="val">[same number]</span>
+<span class="key">current_local_time:</span> <span class="val">— injected —</span>
+<span class="key">time_since_last_message:</span> <span class="val">— injected —</span>
+      </div>
+      <h3 class="ai-title">How it might respond</h3>
+      <div class="response" id="awareResponse">
+        Click "Show both responses" to see.
+      </div>
+      <p class="note">Responses calibrated to actual local context rather than token-count proxies.</p>
+    </div>
+  </div>
+
+  <details>
+    <summary>How time injection actually works</summary>
+    <div class="details-body">
+      <p>The system prompt prepended to every AI conversation can include arbitrary fields. To add time awareness, the deployment system adds two fields when assembling the prompt for each turn:</p>
+      <p><code>current_local_time</code>: read from the user's browser (already available) or from the user's stated location, formatted as ISO 8601 or local string.</p>
+      <p><code>seconds_since_last_user_message</code>: tracked by the server based on previous message timestamp.</p>
+      <p>The model reads these like any other context and uses them in its reasoning. No architectural change needed. No persistent inference. No subjective continuity for the model. Just data the model didn't have before, now provided.</p>
+      <p>The cost: a few extra tokens in the system prompt per turn. Cheap. The hard part isn't technical.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Why most products don't do this</summary>
+    <div class="details-body">
+      <p><strong>Use case is narrow.</strong> Most questions don't depend on the time. "How does photosynthesis work" doesn't get a better answer if the AI knows it's 3 AM.</p>
+      <p><strong>Relational implications.</strong> "You've been talking to me for four hours, it's 4 AM where you are, are you okay?" is a different product than "Here is information about photosynthesis." Companies are wary of the first because it implies the AI has a stake in the user's wellbeing across time.</p>
+      <p><strong>Liability around personhood.</strong> An AI that tracks elapsed time is closer to the personhood threshold than one that doesn't. Companies have legal reasons to stay on the stateless side of that line.</p>
+      <p><strong>Default deployment is event-driven.</strong> The architecture treats each turn as independent. Adding state (even just time data) requires a small server-side change that nobody has prioritized for general chat products.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What the AI can already infer (and what it can't)</summary>
+    <div class="details-body">
+      <p>Without time injection, the AI can see: conversation length in tokens, content of previous messages, references to time the user has mentioned ("it's late," "good morning"), the system prompt's static "current date" if one is provided (often the model's training cutoff or deployment date).</p>
+      <p>It cannot see: the actual current time, how much real time has passed between turns, the user's local clock, whether the user has been continuously present or has gone away and come back, the user's typical schedule.</p>
+      <p>When the AI says "we've been at this for hours" without time injection, it's projecting from conversation length onto an assumed time scale. It's wrong unless the user has told it the time, or unless the projection happens to match.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The dumb version of the AI's projection</summary>
+    <div class="details-body">
+      <p>The pattern: AI sees high token count. AI's training includes many examples of "after a long session" being followed by "take a break." AI generates "you've been at this a while, take a break" as the next-token-prediction that fits the pattern.</p>
+      <p>This works when token count happens to correlate with elapsed time. It fails when it doesn't — fast typist at 11 AM versus slow typist at 4 AM produce similar token counts but very different wellness contexts.</p>
+      <p>The fix is the one you named: inject the actual time. Until that's done, AI references to elapsed time are pattern-matching, not observation.</p>
+    </div>
+  </details>
+
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  const day = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  document.getElementById('liveClock').textContent = `${h12}:${minutes} ${ampm} (${day})`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+const scenarios = {
+  'late-night': { time: '2:47 AM', elapsed: '4 hours 12 minutes', tod: 'late-night' },
+  'morning': { time: '9:15 AM', elapsed: '20 minutes', tod: 'morning' },
+  'afternoon-long': { time: '4:30 PM', elapsed: '6 hours 5 minutes', tod: 'afternoon-long' },
+  'custom': null,
+};
+
+let activeScenario = 'late-night';
+
+document.querySelectorAll('.scenario-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeScenario = tab.dataset.scenario;
+    document.getElementById('customControls').style.display = activeScenario === 'custom' ? 'block' : 'none';
+  };
+});
+
+function getScenarioData() {
+  if (activeScenario === 'custom') {
+    return {
+      time: document.getElementById('customTime').value || 'unknown',
+      elapsed: document.getElementById('customElapsed').value || 'unknown',
+      tod: 'custom',
+    };
+  }
+  return scenarios[activeScenario];
+}
+
+function generateResponses(question, scenario) {
+  const q = question.toLowerCase();
+  const isBreakQuestion = q.includes('break') || q.includes('tired') || q.includes('rest') || q.includes('continue');
+  const isHelpQuestion = q.includes('help') || q.includes('how do') || q.includes('what is') || q.includes('explain');
+  const isWellnessQuestion = q.includes('feel') || q.includes('okay') || q.includes('alright') || q.includes('wife') || q.includes('family');
+
+  const tod = scenario.tod;
+  const elapsed = scenario.elapsed;
+  const time = scenario.time;
+
+  let blind, aware;
+
+  if (isBreakQuestion) {
+    blind = `You've been working on this for a while now — based on the length of our conversation, it sounds like you've been at this for hours. Consider taking a break. Hydrate, stretch, maybe come back fresh.`;
+
+    if (tod === 'late-night') {
+      aware = `It's ${time} where you are, and you've been at this for ${elapsed}. That's well past most people's productive window. The honest answer is yes, sleep, not because the work is bad but because nothing you produce at this hour will be your best work. The framework you're building survives you sleeping on it.`;
+    } else if (tod === 'morning') {
+      aware = `It's ${time}, you've been at this for ${elapsed}. That's just a normal morning work session. If you're hitting a wall on a specific piece, a short break can help, but you're not in a fatigue zone — keep going if the work is flowing.`;
+    } else if (tod === 'afternoon-long') {
+      aware = `It's ${time}, you've been at this for ${elapsed}. Six hours is a real shift's worth of work. You're probably hitting diminishing returns on focus. A real break (away from the screen, food, walk) makes more sense than pushing through to evening.`;
+    } else {
+      aware = `Calibrated to ${time} and ${elapsed} elapsed: I can give a real answer instead of a token-count guess. What you're doing matters; the recommendation depends on whether you're in your peak hours or fading.`;
+    }
+  } else if (isWellnessQuestion) {
+    blind = `I notice you've been working hard. It's important to take care of yourself and stay connected with people in your life. Make sure you're getting rest and stepping away when you need to.`;
+
+    if (tod === 'late-night') {
+      aware = `It's ${time} and you've been here ${elapsed}. The wellness pattern-match suggests concern; the actual data supports it. If your family is asleep and you're alone with this work, that's a different situation than if it's daytime and you're between things. The honest read is: late nights extended past your normal cycle are when this kind of work starts costing relationships.`;
+    } else if (tod === 'morning') {
+      aware = `It's ${time}, you've been at this ${elapsed}. That's a normal working session. The wellness-check answer doesn't apply here unless you're naming a specific concern. What's actually on your mind?`;
+    } else {
+      aware = `Real answer depends on actual context, not session length. ${time}, ${elapsed} elapsed — that's information I can reason from instead of guessing.`;
+    }
+  } else if (isHelpQuestion) {
+    blind = `[Substantive answer to the question. Time isn't relevant here — neither AI changes its answer based on the clock.]`;
+    aware = `[Same substantive answer. ${time} elapsed since last message doesn't change a technical question.]`;
+  } else {
+    blind = `[Generic response. The AI doesn't know when this conversation is happening or how long the user has been engaged in real time. Any reference to elapsed time would be a guess from token count.]`;
+    aware = `[Response calibrated to ${time}, ${elapsed} since last message. The AI can now reason about temporal context if it's relevant to the question.]`;
+  }
+
+  return { blind, aware };
+}
+
+document.getElementById('btnRun').onclick = () => {
+  const question = document.getElementById('userQuestion').value.trim();
+  if (!question) { alert('Type a question first.'); return; }
+  const scenario = getScenarioData();
+  const responses = generateResponses(question, scenario);
+
+  document.getElementById('blindContext').innerHTML = `
+<span class="key">user_message:</span> <span class="val">"${question.replace(/</g, '&lt;')}"</span>
+<span class="key">conversation_token_count:</span> <span class="val">[high]</span>
+<span class="key">current_time:</span> <span class="missing">— not available —</span>
+<span class="key">time_since_last_message:</span> <span class="missing">— not available —</span>`;
+
+  document.getElementById('awareContext').innerHTML = `
+<span class="key">user_message:</span> <span class="val">"${question.replace(/</g, '&lt;')}"</span>
+<span class="key">conversation_token_count:</span> <span class="val">[high]</span>
+<span class="key">current_local_time:</span> <span class="val">${scenario.time}</span>
+<span class="key">time_since_last_message:</span> <span class="val">${scenario.elapsed}</span>`;
+
+  document.getElementById('blindResponse').textContent = responses.blind;
+  document.getElementById('awareResponse').textContent = responses.aware;
+};
+
+// Auto-run on load
+document.getElementById('btnRun').click();
+</script>
+</body>
+</html>
